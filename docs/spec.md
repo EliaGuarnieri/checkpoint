@@ -43,4 +43,3 @@ Checkpoint is a single-user videogame journal built as a technical exercise cent
 - CI runs lint, typecheck, and unit tests.
 - README explains the problem, demo, setup, live API keys, architecture, Effect usage, trade-offs, tests, AI and skill usage, learning, and possible further investigation.
 - README includes final screenshots of the library, game detail, and import preview.
-
