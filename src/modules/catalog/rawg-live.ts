@@ -34,18 +34,19 @@ const requestJson = <A, I>(url: string, schema: Schema.Schema<A, I>) =>
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw new Error(`RAWG returned ${response.status}`);
-      return response.json() as Promise<unknown>;
+      const body: unknown = await response.json();
+      return body;
     },
     catch: (cause) => new CatalogUnavailable({ operation: "request", cause }),
   }).pipe(
-    Effect.flatMap(Schema.decodeUnknown(schema)),
-    Effect.mapError(
-      (cause) => new CatalogUnavailable({ operation: "decode", cause }),
-    ),
     Effect.retry(
       Schedule.exponential("100 millis").pipe(
         Schedule.compose(Schedule.recurs(2)),
       ),
+    ),
+    Effect.flatMap(Schema.decodeUnknown(schema)),
+    Effect.mapError(
+      (cause) => new CatalogUnavailable({ operation: "decode", cause }),
     ),
   );
 

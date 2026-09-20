@@ -15,21 +15,22 @@ export const LibraryEntryUpdate = Schema.Struct({
 });
 export type LibraryEntryUpdate = typeof LibraryEntryUpdate.Type;
 
-export interface LibraryGame {
-  readonly id: string;
-  readonly rawgId: number | null;
-  readonly title: string;
-  readonly slug: string;
-  readonly coverUrl: string | null;
-  readonly releaseDate: string | null;
-  readonly status: TrackingStatus;
-  readonly rating: number | null;
-  readonly note: string | null;
-  readonly genres: ReadonlyArray<string>;
-  readonly developers: ReadonlyArray<string>;
-  readonly publishers: ReadonlyArray<string>;
-  readonly updatedAt: string;
-}
+export const LibraryGameSchema = Schema.Struct({
+  id: Schema.String,
+  rawgId: Schema.NullOr(Schema.Number),
+  title: Schema.String,
+  slug: Schema.String,
+  coverUrl: Schema.NullOr(Schema.String),
+  releaseDate: Schema.NullOr(Schema.String),
+  status: TrackingStatus,
+  rating: Schema.NullOr(Schema.Number),
+  note: Schema.NullOr(Schema.String),
+  genres: Schema.Array(Schema.String),
+  developers: Schema.Array(Schema.String),
+  publishers: Schema.Array(Schema.String),
+  updatedAt: Schema.String,
+});
+export type LibraryGame = typeof LibraryGameSchema.Type;
 
 export interface LibraryFilters {
   readonly query?: string;

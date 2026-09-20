@@ -15,6 +15,7 @@ import {
 } from "~/modules/steam-import/steam-library";
 
 const unusedRepositoryMethods = {
+  refreshCatalogGames: () => Effect.void,
   list: () => Effect.succeed([]),
   findById: (gameId: string) =>
     Effect.dieMessage(`Unexpected findById: ${gameId}`),

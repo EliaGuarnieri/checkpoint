@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Schema } from "effect";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -25,7 +27,10 @@ import { Field, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
 import { fetchJson } from "~/lib/api";
-import type { CatalogGame } from "~/modules/catalog/model";
+import { CatalogGameSchema, type CatalogGame } from "~/modules/catalog/model";
+
+const CatalogSearchResponse = Schema.Array(CatalogGameSchema);
+const AddedResponse = Schema.Struct({ added: Schema.Literal(true) });
 
 export function CatalogSearchDialog() {
   const [open, setOpen] = useState(false);
@@ -34,14 +39,15 @@ export function CatalogSearchDialog() {
   const search = useQuery({
     queryKey: ["catalog-search", query],
     queryFn: () =>
-      fetchJson<ReadonlyArray<CatalogGame>>(
+      fetchJson(
+        CatalogSearchResponse,
         `/api/catalog/search?query=${encodeURIComponent(query)}`,
       ),
     enabled: open && query.trim().length >= 2,
   });
   const addGame = useMutation({
     mutationFn: (game: CatalogGame) =>
-      fetchJson<{ added: true }>("/api/library", {
+      fetchJson(AddedResponse, "/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(game),
@@ -79,13 +85,23 @@ export function CatalogSearchDialog() {
             />
           </div>
         </Field>
+        {(search.isError || addGame.isError) && (
+          <Alert variant="destructive">
+            <AlertTitle>Operazione non riuscita</AlertTitle>
+            <AlertDescription>
+              {addGame.isError
+                ? "Il gioco non è stato aggiunto. Riprova."
+                : "Il catalogo non è disponibile. Riprova tra poco."}
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="max-h-80 overflow-y-auto">
           {search.isFetching ? (
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
               <Spinner />
               Ricerca in corso…
             </div>
-          ) : search.data?.length ? (
+          ) : search.isError ? null : search.data?.length ? (
             <ul className="flex flex-col gap-2">
               {search.data.map((game) => (
                 <li

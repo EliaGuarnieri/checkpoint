@@ -12,14 +12,4 @@ export const CatalogGameSchema = Schema.Struct({
   steamAppId: Schema.NullOr(Schema.String),
 });
 
-export interface CatalogGame {
-  readonly id: string;
-  readonly title: string;
-  readonly slug: string;
-  readonly coverUrl: string | null;
-  readonly releaseDate: string | null;
-  readonly genres: ReadonlyArray<string>;
-  readonly developers: ReadonlyArray<string>;
-  readonly publishers: ReadonlyArray<string>;
-  readonly steamAppId: string | null;
-}
+export type CatalogGame = typeof CatalogGameSchema.Type;

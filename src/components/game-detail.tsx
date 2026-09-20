@@ -1,12 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Schema } from "effect";
 import { ArrowLeftIcon, SaveIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
   Card,
@@ -35,7 +37,14 @@ import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { fetchJson } from "~/lib/api";
 import { cn } from "~/lib/utils";
-import type { LibraryGame, TrackingStatus } from "~/modules/library/model";
+import {
+  LibraryGameSchema,
+  type LibraryGame,
+  type TrackingStatus,
+} from "~/modules/library/model";
+
+const UpdatedResponse = Schema.Struct({ updated: Schema.Literal(true) });
+const RemovedResponse = Schema.Struct({ removed: Schema.Literal(true) });
 
 const statuses: ReadonlyArray<{ value: TrackingStatus; label: string }> = [
   { value: "backlog", label: "Backlog" },
@@ -50,9 +59,18 @@ const isTrackingStatus = (value: string): value is TrackingStatus =>
 export function GameDetail({ gameId }: { readonly gameId: string }) {
   const game = useQuery({
     queryKey: ["library-game", gameId],
-    queryFn: () => fetchJson<LibraryGame>(`/api/library/${gameId}`),
+    queryFn: () => fetchJson(LibraryGameSchema, `/api/library/${gameId}`),
   });
   if (game.isLoading) return <Skeleton className="h-96" />;
+  if (game.isError)
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Gioco non disponibile</AlertTitle>
+        <AlertDescription>
+          Non è stato possibile caricare questa voce della libreria.
+        </AlertDescription>
+      </Alert>
+    );
   if (!game.data) return <p>Gioco non trovato.</p>;
 
   return <GameDetailEditor key={game.data.updatedAt} game={game.data} />;
@@ -66,7 +84,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   const [note, setNote] = useState(game.note ?? "");
   const update = useMutation({
     mutationFn: () =>
-      fetchJson(`/api/library/${game.id}`, {
+      fetchJson(UpdatedResponse, `/api/library/${game.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,7 +102,9 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   });
   const remove = useMutation({
     mutationFn: () =>
-      fetchJson(`/api/library/${game.id}`, { method: "DELETE" }),
+      fetchJson(RemovedResponse, `/api/library/${game.id}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => router.push("/library"),
   });
 
@@ -210,6 +230,15 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                 Salva checkpoint
               </Button>
             </div>
+            {(update.isError || remove.isError) && (
+              <Alert variant="destructive">
+                <AlertTitle>Modifica non salvata</AlertTitle>
+                <AlertDescription>
+                  La richiesta non è riuscita. I dati nel modulo sono rimasti
+                  invariati: puoi riprovare.
+                </AlertDescription>
+              </Alert>
+            )}
           </FieldGroup>
         </CardContent>
       </Card>

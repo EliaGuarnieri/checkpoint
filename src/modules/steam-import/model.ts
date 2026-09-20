@@ -1,4 +1,6 @@
-import type { CatalogGame } from "~/modules/catalog/model";
+import { Schema } from "effect";
+
+import { CatalogGameSchema, type CatalogGame } from "~/modules/catalog/model";
 
 export interface OwnedSteamGame {
   readonly steamAppId: string;
@@ -26,3 +28,29 @@ export interface SteamImportPreview {
   readonly unmatchedGames: ReadonlyArray<OwnedSteamGame>;
   readonly failures: ReadonlyArray<FailedSteamGame>;
 }
+
+const OwnedSteamGameSchema = Schema.Struct({
+  steamAppId: Schema.String,
+  title: Schema.String,
+});
+const MatchedSteamGameSchema = Schema.Struct({
+  ...OwnedSteamGameSchema.fields,
+  game: CatalogGameSchema,
+});
+const MatchCandidateSchema = Schema.Struct({
+  steamAppId: Schema.String,
+  ownedTitle: Schema.String,
+  candidate: CatalogGameSchema,
+});
+const FailedSteamGameSchema = Schema.Struct({
+  ...OwnedSteamGameSchema.fields,
+  reason: Schema.Literal("catalog-unavailable"),
+});
+
+export const SteamImportPreviewSchema = Schema.Struct({
+  newGames: Schema.Array(MatchedSteamGameSchema),
+  existingGames: Schema.Array(MatchedSteamGameSchema),
+  candidates: Schema.Array(MatchCandidateSchema),
+  unmatchedGames: Schema.Array(OwnedSteamGameSchema),
+  failures: Schema.Array(FailedSteamGameSchema),
+});

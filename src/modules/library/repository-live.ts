@@ -25,15 +25,26 @@ const databaseEffect = <A>(operation: string, run: () => Promise<A>) =>
     catch: (cause) => new DatabaseUnavailable({ operation, cause }),
   });
 
-const syncGameMetadata = async (gameId: string, game: CatalogGame) => {
+type DatabaseTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+const syncGameMetadata = async (
+  transaction: DatabaseTransaction,
+  gameId: string,
+  game: CatalogGame,
+) => {
+  await transaction.delete(gameGenres).where(eq(gameGenres.gameId, gameId));
+  await transaction
+    .delete(gameCompanies)
+    .where(eq(gameCompanies.gameId, gameId));
+
   for (const name of game.genres) {
-    const [genre] = await db
+    const [genre] = await transaction
       .insert(genres)
       .values({ name })
       .onConflictDoUpdate({ target: genres.name, set: { name } })
       .returning({ id: genres.id });
     if (genre) {
-      await db
+      await transaction
         .insert(gameGenres)
         .values({ gameId, genreId: genre.id })
         .onConflictDoNothing();
@@ -45,13 +56,13 @@ const syncGameMetadata = async (gameId: string, game: CatalogGame) => {
     ["publisher", game.publishers],
   ] as const) {
     for (const name of names) {
-      const [company] = await db
+      const [company] = await transaction
         .insert(companies)
         .values({ name })
         .onConflictDoUpdate({ target: companies.name, set: { name } })
         .returning({ id: companies.id });
       if (company) {
-        await db
+        await transaction
           .insert(gameCompanies)
           .values({ gameId, companyId: company.id, role })
           .onConflictDoNothing();
@@ -60,32 +71,33 @@ const syncGameMetadata = async (gameId: string, game: CatalogGame) => {
   }
 };
 
-const upsertCatalogGame = async (game: CatalogGame) => {
-  const rawgId = Number(game.id);
-  const [stored] = await db
-    .insert(games)
-    .values({
-      rawgId: Number.isFinite(rawgId) ? rawgId : null,
-      title: game.title,
-      slug: game.slug,
-      coverUrl: game.coverUrl,
-      releaseDate: game.releaseDate,
-    })
-    .onConflictDoUpdate({
-      target: games.slug,
-      set: {
+const upsertCatalogGame = (game: CatalogGame) =>
+  db.transaction(async (transaction) => {
+    const rawgId = Number(game.id);
+    const [stored] = await transaction
+      .insert(games)
+      .values({
+        rawgId: Number.isFinite(rawgId) ? rawgId : null,
         title: game.title,
+        slug: game.slug,
         coverUrl: game.coverUrl,
         releaseDate: game.releaseDate,
-        updatedAt: new Date(),
-      },
-    })
-    .returning({ id: games.id });
+      })
+      .onConflictDoUpdate({
+        target: games.slug,
+        set: {
+          title: game.title,
+          coverUrl: game.coverUrl,
+          releaseDate: game.releaseDate,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ id: games.id });
 
-  if (!stored) throw new Error("Game upsert returned no row");
-  await syncGameMetadata(stored.id, game);
-  return stored.id;
-};
+    if (!stored) throw new Error("Game upsert returned no row");
+    await syncGameMetadata(transaction, stored.id, game);
+    return stored.id;
+  });
 
 const loadLibraryGame = async (gameId: string): Promise<LibraryGame | null> => {
   const [row] = await db
@@ -132,6 +144,10 @@ const loadLibraryGame = async (gameId: string): Promise<LibraryGame | null> => {
 };
 
 export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
+  refreshCatalogGames: (catalogGames) =>
+    databaseEffect("refreshCatalogGames", async () => {
+      for (const game of catalogGames) await upsertCatalogGame(game);
+    }),
   containsCatalogGame: (catalogGameId) =>
     databaseEffect("containsCatalogGame", async () => {
       const rawgId = Number(catalogGameId);

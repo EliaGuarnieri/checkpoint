@@ -21,6 +21,9 @@ export class LibraryEntryNotFound extends Data.TaggedError(
 }> {}
 
 export interface LibraryRepositoryService {
+  readonly refreshCatalogGames: (
+    games: ReadonlyArray<CatalogGame>,
+  ) => Effect.Effect<void, DatabaseUnavailable>;
   readonly containsCatalogGame: (
     catalogGameId: string,
   ) => Effect.Effect<boolean, DatabaseUnavailable>;

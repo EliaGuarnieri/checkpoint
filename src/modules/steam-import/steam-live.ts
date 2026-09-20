@@ -33,7 +33,8 @@ export const makeSteamLibraryLive = (apiKey: string) =>
           const response = await fetch(url);
           if (!response.ok)
             throw new Error(`Steam returned ${response.status}`);
-          return response.json() as Promise<unknown>;
+          const body: unknown = await response.json();
+          return body;
         },
         catch: (cause) => new SteamLibraryUnavailable({ steamId, cause }),
       }).pipe(

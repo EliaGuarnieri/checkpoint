@@ -70,6 +70,7 @@ export const SteamLibraryFake = Layer.succeed(SteamLibrary, {
 });
 
 export const LibraryRepositoryFake = Layer.succeed(LibraryRepository, {
+  refreshCatalogGames: () => Effect.void,
   containsCatalogGame: (catalogGameId) =>
     Effect.succeed(catalogGameId === "3498"),
   list: () => Effect.succeed([]),

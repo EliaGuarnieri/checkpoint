@@ -129,6 +129,7 @@ const filterEntries = (filters: LibraryFilters) => {
 };
 
 export const LibraryRepositoryMemory = Layer.succeed(LibraryRepository, {
+  refreshCatalogGames: () => Effect.void,
   containsCatalogGame: (catalogGameId) =>
     Effect.succeed(
       entries.some((game) => String(game.rawgId) === catalogGameId),

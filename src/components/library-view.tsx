@@ -1,11 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Schema } from "effect";
 import { Gamepad2Icon, SearchIcon, StarIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { CatalogSearchDialog } from "~/components/catalog-search-dialog";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import {
   Card,
@@ -34,7 +36,12 @@ import {
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { fetchJson } from "~/lib/api";
-import type { LibraryGame, TrackingStatus } from "~/modules/library/model";
+import {
+  LibraryGameSchema,
+  type TrackingStatus,
+} from "~/modules/library/model";
+
+const LibraryResponse = Schema.Array(LibraryGameSchema);
 
 const statusLabels: Record<TrackingStatus, string> = {
   backlog: "Backlog",
@@ -79,8 +86,7 @@ export function LibraryView() {
       minimumRating,
       sort,
     ],
-    queryFn: () =>
-      fetchJson<ReadonlyArray<LibraryGame>>(`/api/library?${params}`),
+    queryFn: () => fetchJson(LibraryResponse, `/api/library?${params}`),
   });
 
   return (
@@ -196,13 +202,21 @@ export function LibraryView() {
           </SelectContent>
         </Select>
       </div>
+      {library.isError && (
+        <Alert variant="destructive">
+          <AlertTitle>Libreria non disponibile</AlertTitle>
+          <AlertDescription>
+            Non è stato possibile caricare i giochi. Riprova.
+          </AlertDescription>
+        </Alert>
+      )}
       {library.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }, (_, index) => (
             <Skeleton key={index} className="h-64" />
           ))}
         </div>
-      ) : library.data?.length ? (
+      ) : library.isError ? null : library.data?.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {library.data.map((game) => (
             <Card key={game.id} className="overflow-hidden">

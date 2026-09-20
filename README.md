@@ -27,7 +27,7 @@ pnpm dev
 Apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` da `.env.example`, avvia PostgreSQL, applica le migration e carica cinque voci dimostrative. Il seed è ripetibile.
 
 ```bash
-pnpm test       # sei test del dominio e del workflow
+pnpm test       # sette test del dominio e dei confini HTTP
 pnpm typecheck
 pnpm lint
 pnpm check      # lint + typecheck + test

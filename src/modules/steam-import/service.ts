@@ -42,7 +42,7 @@ const reconcileOwnedGame = (ownedGame: OwnedSteamGame) =>
       return {
         kind: exists ? "existing" : "new",
         value: { ...ownedGame, game: exactMatch },
-      } as Reconciliation;
+      } satisfies Reconciliation;
     }
 
     const candidates = yield* catalog.searchByTitle(ownedGame.title);

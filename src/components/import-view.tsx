@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Schema } from "effect";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -28,7 +29,12 @@ import {
 import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
 import { fetchJson } from "~/lib/api";
-import type { SteamImportPreview } from "~/modules/steam-import/model";
+import {
+  SteamImportPreviewSchema,
+  type SteamImportPreview,
+} from "~/modules/steam-import/model";
+
+const ImportConfirmationResponse = Schema.Struct({ imported: Schema.Number });
 
 export function ImportView() {
   const [steamId, setSteamId] = useState("demo");
@@ -39,7 +45,7 @@ export function ImportView() {
   const queryClient = useQueryClient();
   const previewImport = useMutation({
     mutationFn: () =>
-      fetchJson<SteamImportPreview>("/api/import/preview", {
+      fetchJson(SteamImportPreviewSchema, "/api/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ steamId }),
@@ -63,7 +69,7 @@ export function ImportView() {
             game: candidate,
           })) ?? []),
       ];
-      return fetchJson<{ imported: number }>("/api/import/confirm", {
+      return fetchJson(ImportConfirmationResponse, "/api/import/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ games }),
@@ -122,6 +128,17 @@ export function ImportView() {
           </FieldGroup>
         </CardContent>
       </Card>
+      {(previewImport.isError || confirmImport.isError) && (
+        <Alert variant="destructive">
+          <AlertTriangleIcon />
+          <AlertTitle>Importazione non riuscita</AlertTitle>
+          <AlertDescription>
+            {confirmImport.isError
+              ? "Nessun nuovo gioco è stato confermato. La preview resta disponibile per riprovare."
+              : "Non è stato possibile leggere la libreria Steam. Controlla lo SteamID e la configurazione."}
+          </AlertDescription>
+        </Alert>
+      )}
       {preview && (
         <div className="flex flex-col gap-4">
           <Alert>

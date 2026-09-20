@@ -7,16 +7,22 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchJson<A>(
+const ErrorResponse = Schema.Struct({ error: Schema.String });
+
+export async function fetchJson<A, I>(
+  schema: Schema.Schema<A, I>,
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<A> {
   const response = await fetch(input, init);
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new ApiError(response.status, body?.error ?? "Request failed");
+    const body: unknown = await response.json().catch(() => null);
+    const decoded = await Schema.decodeUnknownPromise(ErrorResponse)(
+      body,
+    ).catch(() => ({ error: "Request failed" }));
+    throw new ApiError(response.status, decoded.error);
   }
-  return response.json() as Promise<A>;
+  const body: unknown = await response.json();
+  return Schema.decodeUnknownPromise(schema)(body);
 }
+import { Schema } from "effect";

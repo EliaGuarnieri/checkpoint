@@ -6,6 +6,7 @@ import {
 } from "~/infrastructure/api-schema";
 import { makeAppLayer } from "~/infrastructure/app-layer";
 import { runHttp } from "~/infrastructure/http";
+import { jsonBody } from "~/infrastructure/request";
 import { LibraryRepository } from "~/modules/library/service";
 
 export async function GET(request: Request) {
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const program = Effect.gen(function* () {
     const game = yield* Schema.decodeUnknown(ManualGameInput)(
-      yield* Effect.promise(() => request.json()),
+      yield* jsonBody(request),
     );
     const library = yield* LibraryRepository;
     yield* library.addManualGame(game);
