@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "ignorePatterns": [
+    ".agents/**",
+    ".next/**",
+    "docs/screenshots/**",
+    "node_modules/**"
+  ],
+  "sortTailwindcss": {
+    "stylesheet": "./src/styles/globals.css",
+    "functions": ["cn"]
+  }
+}
