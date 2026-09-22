@@ -8,6 +8,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Learning intent
+
+The user's primary goal in this repository is to learn the `effect` library. When explaining, reviewing, or changing code, connect the work to the relevant Effect concepts and make the reasoning and trade-offs teachable.
+
 ## Agent skills
 
 ### Issue tracker
