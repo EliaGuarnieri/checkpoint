@@ -82,61 +82,74 @@ const seedGames = [
   },
 ];
 
-for (const game of seedGames) {
-  await db
-    .insert(games)
-    .values({
-      id: game.id,
-      rawgId: game.rawgId,
-      title: game.title,
-      slug: game.slug,
-      releaseDate: game.releaseDate,
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(libraryEntries)
-    .values({
-      gameId: game.id,
-      status: game.status,
-      rating: game.rating,
-      note: game.note,
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(ownershipSources)
-    .values({ gameId: game.id, provider: "steam", externalId: game.steamAppId })
-    .onConflictDoNothing();
+async function seed() {
+  for (const game of seedGames) {
+    await db
+      .insert(games)
+      .values({
+        id: game.id,
+        rawgId: game.rawgId,
+        title: game.title,
+        slug: game.slug,
+        releaseDate: game.releaseDate,
+      })
+      .onConflictDoNothing();
+    await db
+      .insert(libraryEntries)
+      .values({
+        gameId: game.id,
+        status: game.status,
+        rating: game.rating,
+        note: game.note,
+      })
+      .onConflictDoNothing();
+    await db
+      .insert(ownershipSources)
+      .values({
+        gameId: game.id,
+        provider: "steam",
+        externalId: game.steamAppId,
+      })
+      .onConflictDoNothing();
 
-  for (const name of game.genres) {
-    const [genre] = await db
-      .insert(genres)
-      .values({ name })
-      .onConflictDoUpdate({ target: genres.name, set: { name } })
-      .returning({ id: genres.id });
-    if (genre) {
-      await db
-        .insert(gameGenres)
-        .values({ gameId: game.id, genreId: genre.id })
-        .onConflictDoNothing();
+    for (const name of game.genres) {
+      const [genre] = await db
+        .insert(genres)
+        .values({ name })
+        .onConflictDoUpdate({ target: genres.name, set: { name } })
+        .returning({ id: genres.id });
+      if (genre) {
+        await db
+          .insert(gameGenres)
+          .values({ gameId: game.id, genreId: genre.id })
+          .onConflictDoNothing();
+      }
+    }
+
+    for (const [role, name] of [
+      ["developer", game.developer],
+      ["publisher", game.publisher],
+    ] as const) {
+      const [company] = await db
+        .insert(companies)
+        .values({ name })
+        .onConflictDoUpdate({ target: companies.name, set: { name } })
+        .returning({ id: companies.id });
+      if (company) {
+        await db
+          .insert(gameCompanies)
+          .values({ gameId: game.id, companyId: company.id, role })
+          .onConflictDoNothing();
+      }
     }
   }
 
-  for (const [role, name] of [
-    ["developer", game.developer],
-    ["publisher", game.publisher],
-  ] as const) {
-    const [company] = await db
-      .insert(companies)
-      .values({ name })
-      .onConflictDoUpdate({ target: companies.name, set: { name } })
-      .returning({ id: companies.id });
-    if (company) {
-      await db
-        .insert(gameCompanies)
-        .values({ gameId: game.id, companyId: company.id, role })
-        .onConflictDoNothing();
-    }
-  }
+  console.log(`Seeded ${seedGames.length} library entries.`);
 }
 
-console.log(`Seeded ${seedGames.length} library entries.`);
+void seed()
+  .catch((error: unknown) => {
+    console.error("Failed to seed the database.", error);
+    process.exitCode = 1;
+  })
+  .finally(() => db.$client.end());
