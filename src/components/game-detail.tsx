@@ -36,7 +36,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { fetchJson } from "~/lib/api";
-import { cn } from "~/lib/utils";
+import { cn } from "cn";
 import {
   LibraryGameSchema,
   type LibraryGame,

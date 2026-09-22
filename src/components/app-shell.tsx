@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { buttonVariants } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { cn } from "~/lib/utils";
+import { cn } from "cn";
 
 export function AppShell({ children }: { readonly children: ReactNode }) {
   return (
