@@ -16,6 +16,7 @@
     "import",
     "react",
     "jsx-a11y",
+    "effecttsgo",
     "nextjs"
   ],
   "ignorePatterns": [
