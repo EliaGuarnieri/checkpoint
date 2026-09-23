@@ -24,5 +24,6 @@ export const makeAppLayer = () => {
     process.env.DATABASE_URL === "memory"
       ? LibraryRepositoryMemory
       : LibraryRepositoryLive;
+
   return Layer.mergeAll(catalog, steam, library);
 };

@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
 import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
@@ -46,7 +46,9 @@ export const GameCatalogFake = Layer.succeed(GameCatalog, {
     steamAppId === "999002"
       ? Effect.fail(new CatalogUnavailable({ operation: "findBySteamAppId" }))
       : Effect.succeed(
-          catalogGames.find((game) => game.steamAppId === steamAppId) ?? null,
+          Option.fromNullable(
+            catalogGames.find((game) => game.steamAppId === steamAppId),
+          ),
         ),
   searchByTitle: (title) =>
     Effect.succeed(

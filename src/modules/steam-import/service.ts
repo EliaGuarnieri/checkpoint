@@ -1,6 +1,7 @@
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 
-import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
+import type { CatalogGame } from "~/modules/catalog/model";
+import { GameCatalog } from "~/modules/catalog/service";
 import { LibraryRepository } from "~/modules/library/service";
 import type {
   MatchedSteamGame,
@@ -37,11 +38,11 @@ const reconcileOwnedGame = (ownedGame: OwnedSteamGame) =>
       ownedGame.title,
     );
 
-    if (exactMatch !== null) {
-      const exists = yield* library.containsCatalogGame(exactMatch.id);
+    if (Option.isSome(exactMatch)) {
+      const exists = yield* library.containsCatalogGame(exactMatch.value.id);
       return {
         kind: exists ? "existing" : "new",
-        value: { ...ownedGame, game: exactMatch },
+        value: { ...ownedGame, game: exactMatch.value },
       } satisfies Reconciliation;
     }
 
@@ -112,7 +113,7 @@ export const previewSteamImport = (steamId: string) =>
 
 export interface ConfirmedImportGame {
   readonly steamAppId: string;
-  readonly game: import("~/modules/catalog/model").CatalogGame;
+  readonly game: CatalogGame;
 }
 
 export const confirmSteamImport = (
@@ -120,12 +121,12 @@ export const confirmSteamImport = (
 ) =>
   Effect.gen(function* () {
     const library = yield* LibraryRepository;
+
     yield* Effect.forEach(
       confirmedGames,
       ({ game, steamAppId }) => library.importGame(game, steamAppId),
       { concurrency: 1, discard: true },
     );
+
     return { imported: confirmedGames.length };
   });
-
-export type SteamImportError = CatalogUnavailable;

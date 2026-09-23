@@ -26,9 +26,10 @@ const unusedRepositoryMethods = {
 
 describe("previewSteamImport", () => {
   it("classifies every owned game without discarding partial failures", async () => {
-    const preview = await Effect.runPromise(
-      previewSteamImport("demo").pipe(Effect.provide(SteamImportTestLayer)),
+    const program = previewSteamImport("demo").pipe(
+      Effect.provide(SteamImportTestLayer),
     );
+    const preview = await Effect.runPromise(program);
 
     expect(preview).toEqual({
       newGames: [
@@ -71,7 +72,7 @@ describe("previewSteamImport", () => {
       }),
       Layer.succeed(GameCatalog, {
         findBySteamAppId: (steamAppId, title) =>
-          Effect.succeed({
+          Effect.succeedSome({
             id: steamAppId,
             title,
             slug: `game-${steamAppId}`,
@@ -91,9 +92,9 @@ describe("previewSteamImport", () => {
       }),
     );
 
-    const preview = await Effect.runPromise(
-      previewSteamImport("large").pipe(Effect.provide(layer)),
-    );
+    const program = previewSteamImport("large").pipe(Effect.provide(layer));
+    const preview = await Effect.runPromise(program);
+
     expect(preview.newGames).toHaveLength(100);
   });
 
@@ -102,14 +103,16 @@ describe("previewSteamImport", () => {
       getOwnedGames: (steamId) =>
         Effect.fail(new SteamLibraryUnavailable({ steamId })),
     });
-    await expect(
-      Effect.runPromise(
-        previewSteamImport("private").pipe(
-          Effect.provide(steamFailure),
-          Effect.provide(SteamImportTestLayer),
-        ),
-      ),
-    ).rejects.toBeDefined();
+    const program = previewSteamImport("private").pipe(
+      Effect.provide(steamFailure),
+      Effect.provide(SteamImportTestLayer),
+    );
+    const preview = await Effect.runPromise(Effect.flip(program));
+
+    expect(preview).toMatchObject({
+      _tag: "SteamLibraryUnavailable",
+      steamId: "private",
+    });
   });
 
   it("persists only games explicitly passed to confirmation", async () => {

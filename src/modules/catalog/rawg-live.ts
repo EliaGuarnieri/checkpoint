@@ -1,4 +1,4 @@
-import { Effect, Layer, Schedule, Schema } from "effect";
+import { Effect, Layer, Schedule, Schema, Option } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
 import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
@@ -44,10 +44,14 @@ const requestJson = <A, I>(url: string, schema: Schema.Schema<A, I>) =>
         Schedule.compose(Schedule.recurs(2)),
       ),
     ),
-    Effect.flatMap(Schema.decodeUnknown(schema)),
-    Effect.mapError(
-      (cause) => new CatalogUnavailable({ operation: "decode", cause }),
-    ),
+    Effect.flatMap((body) => {
+      const decode = Schema.decodeUnknown(schema);
+      return decode(body).pipe(
+        Effect.mapError(
+          (cause) => new CatalogUnavailable({ operation: "decode", cause }),
+        ),
+      );
+    }),
   );
 
 const toCatalogGame = (
@@ -73,6 +77,7 @@ export const makeGameCatalogLive = (apiKey: string) =>
           `https://api.rawg.io/api/games?key=${encodeURIComponent(apiKey)}&search=${encodeURIComponent(title)}&page_size=10`,
           RawgSearchResponse,
         );
+
         return yield* Effect.forEach(
           search.results,
           (result) =>
@@ -83,12 +88,14 @@ export const makeGameCatalogLive = (apiKey: string) =>
           { concurrency: 4 },
         );
       }),
+
     findBySteamAppId: (steamAppId, title) =>
       Effect.gen(function* () {
         const search = yield* requestJson(
           `https://api.rawg.io/api/games?key=${encodeURIComponent(apiKey)}&search=${encodeURIComponent(title)}&search_exact=true&page_size=5`,
           RawgSearchResponse,
         );
+
         for (const result of search.results) {
           const stores = yield* requestJson(
             `https://api.rawg.io/api/games/${result.id}/stores?key=${encodeURIComponent(apiKey)}`,
@@ -105,9 +112,10 @@ export const makeGameCatalogLive = (apiKey: string) =>
               `https://api.rawg.io/api/games/${result.id}?key=${encodeURIComponent(apiKey)}`,
               RawgDetail,
             );
-            return toCatalogGame(detail, steamAppId);
+            return Option.some(toCatalogGame(detail, steamAppId));
           }
         }
-        return null;
+
+        return Option.none();
       }),
   });
