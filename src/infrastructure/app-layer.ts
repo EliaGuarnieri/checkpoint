@@ -1,10 +1,8 @@
 import { Layer } from "effect";
 
 import { loadConfig } from "~/infrastructure/config";
-import {
-  GameCatalogFake,
-  SteamLibraryFake,
-} from "~/modules/steam-import/fakes";
+import { SteamLibraryFake } from "~/modules/steam-import/fakes";
+import { GameCatalogFake } from "~/modules/catalog/fakes";
 import { makeGameCatalogLive } from "~/modules/catalog/rawg-live";
 import { LibraryRepositoryLive } from "~/modules/library/repository-live";
 import { LibraryRepositoryMemory } from "~/modules/library/repository-memory";
