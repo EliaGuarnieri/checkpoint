@@ -17,9 +17,13 @@ import {
   DatabaseUnavailable,
   LibraryEntryNotFound,
   LibraryRepository,
+  LibraryOperation,
 } from "~/modules/library/service";
 
-const databaseEffect = <A>(operation: string, run: () => Promise<A>) =>
+const databaseEffect = <A>(
+  operation: LibraryOperation,
+  run: () => Promise<A>,
+) =>
   Effect.tryPromise({
     try: run,
     catch: (cause) => new DatabaseUnavailable({ operation, cause }),

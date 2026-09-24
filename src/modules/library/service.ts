@@ -15,7 +15,11 @@ export type LibraryOperation =
   | "importGame"
   | "addManualGame"
   | "update"
-  | "remove";
+  | "remove"
+  | "listLibrary"
+  | "findLibraryEntry"
+  | "updateLibraryEntry"
+  | "removeLibraryEntry";
 
 export class DatabaseUnavailable extends Data.TaggedError(
   "DatabaseUnavailable",
