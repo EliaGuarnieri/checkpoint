@@ -89,5 +89,3 @@ export interface LibraryRepositoryService {
 export class LibraryRepository extends Context.Tag(
   "checkpoint/LibraryRepository",
 )<LibraryRepository, LibraryRepositoryService>() {}
-
-Effect.log("LibraryRepository", LibraryRepository);
