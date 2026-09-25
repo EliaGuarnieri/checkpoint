@@ -101,6 +101,22 @@ const catalogToLibraryGame = (game: CatalogGame): LibraryGame => ({
   updatedAt: new Date().toISOString(),
 });
 
+const updateEntry = (
+  game: CatalogGame,
+  libraryGame: LibraryGame,
+): LibraryGame => {
+  return {
+    ...libraryGame,
+    title: game.title,
+    slug: game.slug,
+    coverUrl: game.coverUrl,
+    releaseDate: game.releaseDate,
+    genres: game.genres,
+    developers: game.developers,
+    publishers: game.publishers,
+  };
+};
+
 const filterEntries = (filters: LibraryFilters) => {
   const filtered = entries.filter((game) => {
     if (
@@ -129,7 +145,23 @@ const filterEntries = (filters: LibraryFilters) => {
 };
 
 export const LibraryRepositoryMemory = Layer.succeed(LibraryRepository, {
-  refreshCatalogGames: () => Effect.void,
+  refreshCatalogGames: (catalogGames) =>
+    Effect.sync(() => {
+      catalogGames.forEach((game) => {
+        const entryIndex = entries.findIndex(
+          ({ rawgId }) => String(rawgId) === game.id,
+        );
+        if (entryIndex < 0) return;
+
+        const existingEntry = entries[entryIndex];
+        const updatedEntry = updateEntry(game, existingEntry);
+        entries = [
+          ...entries.slice(0, entryIndex),
+          updatedEntry,
+          ...entries.slice(entryIndex + 1),
+        ];
+      });
+    }),
   containsCatalogGame: (catalogGameId) =>
     Effect.succeed(
       entries.some((game) => String(game.rawgId) === catalogGameId),
@@ -143,8 +175,20 @@ export const LibraryRepositoryMemory = Layer.succeed(LibraryRepository, {
   },
   importGame: (game) =>
     Effect.sync(() => {
-      if (!entries.some(({ rawgId }) => String(rawgId) === game.id))
+      const entryIndex = entries.findIndex(
+        ({ rawgId }) => String(rawgId) === game.id,
+      );
+      if (entryIndex < 0) {
         entries = [catalogToLibraryGame(game), ...entries];
+        return;
+      }
+      const existingEntry = entries[entryIndex];
+      const updatedEntry = updateEntry(game, existingEntry);
+      entries = [
+        ...entries.slice(0, entryIndex),
+        updatedEntry,
+        ...entries.slice(entryIndex + 1),
+      ];
     }),
   addManualGame: (game) =>
     Effect.sync(() => {
