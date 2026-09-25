@@ -99,13 +99,14 @@ describe("previewSteamImport", () => {
   });
 
   it("reports an unavailable Steam library as an import failure", async () => {
-    const steamFailure = Layer.succeed(SteamLibrary, {
+    const SteamFailure = Layer.succeed(SteamLibrary, {
       getOwnedGames: (steamId) =>
         Effect.fail(new SteamLibraryUnavailable({ steamId })),
     });
+
+    const SteamLayer = Layer.merge(SteamFailure, SteamImportTestLayer);
     const program = previewSteamImport("private").pipe(
-      Effect.provide(steamFailure),
-      Effect.provide(SteamImportTestLayer),
+      Effect.provide(SteamLayer),
     );
     const preview = await Effect.runPromise(Effect.flip(program));
 
