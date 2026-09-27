@@ -8,12 +8,14 @@ export const TrackingStatus = Schema.Literal(
 );
 export type TrackingStatus = typeof TrackingStatus.Type;
 
-export const LibraryEntryUpdate = Schema.Struct({
-  status: TrackingStatus,
-  rating: Schema.NullOr(Schema.Int.pipe(Schema.between(1, 10))),
-  note: Schema.NullOr(Schema.String.pipe(Schema.maxLength(10_000))),
-});
-export type LibraryEntryUpdate = typeof LibraryEntryUpdate.Type;
+export const LibraryEntryUpdate = Schema.partial(
+  Schema.Struct({
+    status: TrackingStatus,
+    rating: Schema.NullOr(Schema.Int.pipe(Schema.between(1, 10))),
+    note: Schema.NullOr(Schema.String.pipe(Schema.maxLength(10_000))),
+  }),
+);
+export type LibraryEntryUpdate = Partial<typeof LibraryEntryUpdate.Type>;
 
 export const LibraryGameSchema = Schema.Struct({
   id: Schema.String,

@@ -7,7 +7,7 @@ import {
   LibraryRepository,
 } from "~/modules/library/service";
 
-let entries: Array<LibraryGame> = [
+let initialEntries: Array<LibraryGame> = [
   {
     id: "00000000-0000-4000-8000-000000000001",
     rawgId: 3498,
@@ -84,6 +84,7 @@ let entries: Array<LibraryGame> = [
     updatedAt: "2026-09-16T12:00:00.000Z",
   },
 ];
+const makeEntries = Effect.sync(() => initialEntries);
 
 const catalogToLibraryGame = (game: CatalogGame): LibraryGame => ({
   id: `memory-${game.id}`,
@@ -117,98 +118,108 @@ const updateEntry = (
   };
 };
 
-const filterEntries = (filters: LibraryFilters) => {
-  const filtered = entries.filter((game) => {
-    if (
-      filters.query &&
-      !game.title.toLowerCase().includes(filters.query.toLowerCase())
-    )
-      return false;
-    if (filters.status && game.status !== filters.status) return false;
-    if (filters.genre && !game.genres.includes(filters.genre)) return false;
-    if (filters.developer && !game.developers.includes(filters.developer))
-      return false;
-    if (filters.publisher && !game.publishers.includes(filters.publisher))
-      return false;
-    if (filters.minimumRating && (game.rating ?? 0) < filters.minimumRating)
-      return false;
-    return true;
-  });
-  return filtered.toSorted((left, right) => {
-    if (filters.sort === "title") return left.title.localeCompare(right.title);
-    if (filters.sort === "rating")
-      return (right.rating ?? -1) - (left.rating ?? -1);
-    if (filters.sort === "releaseDate")
-      return (right.releaseDate ?? "").localeCompare(left.releaseDate ?? "");
-    return right.updatedAt.localeCompare(left.updatedAt);
-  });
-};
+export const LibraryRepositoryMemory = Layer.effect(
+  LibraryRepository,
+  Effect.gen(function* () {
+    let entries = yield* makeEntries;
 
-export const LibraryRepositoryMemory = Layer.succeed(LibraryRepository, {
-  refreshCatalogGames: (catalogGames) =>
-    Effect.sync(() => {
-      catalogGames.forEach((game) => {
-        const entryIndex = entries.findIndex(
-          ({ rawgId }) => String(rawgId) === game.id,
-        );
-        if (entryIndex < 0) return;
-
-        const existingEntry = entries[entryIndex];
-        const updatedEntry = updateEntry(game, existingEntry);
-        entries = [
-          ...entries.slice(0, entryIndex),
-          updatedEntry,
-          ...entries.slice(entryIndex + 1),
-        ];
+    const filterEntries = (filters: LibraryFilters) => {
+      const filtered = entries.filter((game) => {
+        if (
+          filters.query &&
+          !game.title.toLowerCase().includes(filters.query.toLowerCase())
+        )
+          return false;
+        if (filters.status && game.status !== filters.status) return false;
+        if (filters.genre && !game.genres.includes(filters.genre)) return false;
+        if (filters.developer && !game.developers.includes(filters.developer))
+          return false;
+        if (filters.publisher && !game.publishers.includes(filters.publisher))
+          return false;
+        if (filters.minimumRating && (game.rating ?? 0) < filters.minimumRating)
+          return false;
+        return true;
       });
-    }),
-  containsCatalogGame: (catalogGameId) =>
-    Effect.succeed(
-      entries.some((game) => String(game.rawgId) === catalogGameId),
-    ),
-  list: (filters = {}) => Effect.succeed(filterEntries(filters)),
-  findById: (gameId) => {
-    const game = entries.find(({ id }) => id === gameId);
-    return game
-      ? Effect.succeed(game)
-      : Effect.fail(new LibraryEntryNotFound({ gameId }));
-  },
-  importGame: (game) =>
-    Effect.sync(() => {
-      const entryIndex = entries.findIndex(
-        ({ rawgId }) => String(rawgId) === game.id,
-      );
-      if (entryIndex < 0) {
-        entries = [catalogToLibraryGame(game), ...entries];
-        return;
-      }
-      const existingEntry = entries[entryIndex];
-      const updatedEntry = updateEntry(game, existingEntry);
-      entries = [
-        ...entries.slice(0, entryIndex),
-        updatedEntry,
-        ...entries.slice(entryIndex + 1),
-      ];
-    }),
-  addManualGame: (game) =>
-    Effect.sync(() => {
-      if (!entries.some(({ rawgId }) => String(rawgId) === game.id))
-        entries = [catalogToLibraryGame(game), ...entries];
-    }),
-  update: (gameId, update) => {
-    const index = entries.findIndex(({ id }) => id === gameId);
-    if (index < 0) return Effect.fail(new LibraryEntryNotFound({ gameId }));
-    entries = entries.map((entry) =>
-      entry.id === gameId
-        ? { ...entry, ...update, updatedAt: new Date().toISOString() }
-        : entry,
-    );
-    return Effect.void;
-  },
-  remove: (gameId) => {
-    if (!entries.some(({ id }) => id === gameId))
-      return Effect.fail(new LibraryEntryNotFound({ gameId }));
-    entries = entries.filter(({ id }) => id !== gameId);
-    return Effect.void;
-  },
-});
+      return filtered.toSorted((left, right) => {
+        if (filters.sort === "title")
+          return left.title.localeCompare(right.title);
+        if (filters.sort === "rating")
+          return (right.rating ?? -1) - (left.rating ?? -1);
+        if (filters.sort === "releaseDate")
+          return (right.releaseDate ?? "").localeCompare(
+            left.releaseDate ?? "",
+          );
+        return right.updatedAt.localeCompare(left.updatedAt);
+      });
+    };
+
+    return {
+      refreshCatalogGames: (catalogGames) =>
+        Effect.sync(() => {
+          catalogGames.forEach((game) => {
+            const entryIndex = entries.findIndex(
+              ({ rawgId }) => String(rawgId) === game.id,
+            );
+            if (entryIndex < 0) return;
+
+            const existingEntry = entries[entryIndex];
+            const updatedEntry = updateEntry(game, existingEntry);
+            entries = [
+              ...entries.slice(0, entryIndex),
+              updatedEntry,
+              ...entries.slice(entryIndex + 1),
+            ];
+          });
+        }),
+      containsCatalogGame: (catalogGameId) =>
+        Effect.succeed(
+          entries.some((game) => String(game.rawgId) === catalogGameId),
+        ),
+      list: (filters = {}) => Effect.succeed(filterEntries(filters)),
+      findById: (gameId) => {
+        const game = entries.find(({ id }) => id === gameId);
+        return game
+          ? Effect.succeed(game)
+          : Effect.fail(new LibraryEntryNotFound({ gameId }));
+      },
+      importGame: (game) =>
+        Effect.sync(() => {
+          const entryIndex = entries.findIndex(
+            ({ rawgId }) => String(rawgId) === game.id,
+          );
+          if (entryIndex < 0) {
+            entries = [catalogToLibraryGame(game), ...entries];
+            return;
+          }
+          const existingEntry = entries[entryIndex];
+          const updatedEntry = updateEntry(game, existingEntry);
+          entries = [
+            ...entries.slice(0, entryIndex),
+            updatedEntry,
+            ...entries.slice(entryIndex + 1),
+          ];
+        }),
+      addManualGame: (game) =>
+        Effect.sync(() => {
+          if (!entries.some(({ rawgId }) => String(rawgId) === game.id))
+            entries = [catalogToLibraryGame(game), ...entries];
+        }),
+      update: (gameId, update) => {
+        const index = entries.findIndex(({ id }) => id === gameId);
+        if (index < 0) return Effect.fail(new LibraryEntryNotFound({ gameId }));
+        entries = entries.map((entry) =>
+          entry.id === gameId
+            ? { ...entry, ...update, updatedAt: new Date().toISOString() }
+            : entry,
+        );
+        return Effect.void;
+      },
+      remove: (gameId) => {
+        if (!entries.some(({ id }) => id === gameId))
+          return Effect.fail(new LibraryEntryNotFound({ gameId }));
+        entries = entries.filter(({ id }) => id !== gameId);
+        return Effect.void;
+      },
+    };
+  }),
+);
