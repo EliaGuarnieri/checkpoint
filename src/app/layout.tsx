@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "~/components/app-shell";
 import { Providers } from "~/components/providers";
+import { ThemeProvider } from "~/components/theme-provider";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "~/styles/globals.css";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="it"
+      suppressHydrationWarning
       className={cn(
         "typeset typeset-docs h-full antialiased",
         geist.variable,
@@ -33,9 +35,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       )}
     >
       <body className="flex min-h-full flex-col">
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+          storageKey="checkpoint-theme"
+        >
+          <Providers>
+            <AppShell>{children}</AppShell>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

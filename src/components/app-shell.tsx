@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { buttonVariants } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
+import { ThemeSelector } from "~/components/theme-selector";
 import { cn } from "cn";
 
 export function AppShell({ children }: { readonly children: ReactNode }) {
@@ -38,6 +39,7 @@ export function AppShell({ children }: { readonly children: ReactNode }) {
               <RefreshCcwIcon data-icon="inline-start" />
               Importa
             </Link>
+            <ThemeSelector />
           </nav>
         </div>
       </header>
