@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
-  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json"],
+  "extends": [
+    "./node_modules/@effect/tsgo/oxlint-presets/correctness.json",
+    "./node_modules/@effect/tsgo/oxlint-presets/antipattern.json"
+  ],
   "options": {
     "typeAware": true,
     "typeCheck": true
@@ -19,6 +22,21 @@
     "effecttsgo",
     "nextjs"
   ],
+  "rules": {
+    "effecttsgo/class-self-mismatch": "error",
+    "effecttsgo/effect-fn-implicit-any": "error",
+    "effecttsgo/floating-effect": "error",
+    "effecttsgo/floating-effect-in-vitest": "error",
+    "effecttsgo/missing-effect-context": "error",
+    "effecttsgo/missing-effect-error": "error",
+    "effecttsgo/missing-layer-context": "error",
+    "effecttsgo/missing-return-yield-star": "error",
+    "effecttsgo/missing-star-in-yield-effect-gen": "error",
+    "effecttsgo/non-object-effect-service-type": "error",
+    "effecttsgo/overridden-schema-constructor": "error",
+    "effecttsgo/schema-literal-non-finite": "error",
+    "effecttsgo/schema-opaque-instance-member": "error"
+  },
   "ignorePatterns": [
     ".agents/**",
     ".next/**",
@@ -29,6 +47,12 @@
     "out/**"
   ],
   "overrides": [
+    {
+      "files": ["src/app/api/**/route.ts", "**/*.test.ts"],
+      "rules": {
+        "effecttsgo/strict-effect-provide": "off"
+      }
+    },
     {
       "files": ["src/components/ui/{field,label,spinner}.tsx"],
       "rules": {
