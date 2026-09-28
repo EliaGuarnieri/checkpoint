@@ -182,23 +182,6 @@ export const LibraryRepositoryMemory = Layer.effect(
           ? Effect.succeed(game)
           : Effect.fail(new LibraryEntryNotFound({ gameId }));
       },
-      importGame: (game) =>
-        Effect.sync(() => {
-          const entryIndex = entries.findIndex(
-            ({ rawgId }) => String(rawgId) === game.id,
-          );
-          if (entryIndex < 0) {
-            entries = [catalogToLibraryGame(game), ...entries];
-            return;
-          }
-          const existingEntry = entries[entryIndex];
-          const updatedEntry = updateEntry(game, existingEntry);
-          entries = [
-            ...entries.slice(0, entryIndex),
-            updatedEntry,
-            ...entries.slice(entryIndex + 1),
-          ];
-        }),
       addManualGame: (game) =>
         Effect.sync(() => {
           if (!entries.some(({ rawgId }) => String(rawgId) === game.id))

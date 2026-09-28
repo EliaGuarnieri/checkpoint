@@ -18,12 +18,11 @@ const randomGame = (): CatalogGame => {
     genres: [],
     developers: [],
     publishers: [],
-    steamAppId: null,
   };
 };
 
 describe("LibraryRepositoryMemory", () => {
-  it("Check that a game can be added manually and updated on import", async () => {
+  it("adds a catalog game and updates its personal entry", async () => {
     const program = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
 
@@ -41,15 +40,6 @@ describe("LibraryRepositoryMemory", () => {
         note: "Great game!",
       });
 
-      yield* repository.importGame(
-        {
-          ...fakeGame,
-          title: "Manual imported Game",
-          steamAppId: "demo imported",
-        },
-        "demo",
-      );
-
       const updatedEntry = yield* repository.findById(libraryEntry.id);
       yield* repository.remove(libraryEntry.id);
       return updatedEntry;
@@ -58,95 +48,39 @@ describe("LibraryRepositoryMemory", () => {
     const result = await Effect.runPromise(program);
 
     expect(result).toMatchObject({
-      title: "Manual imported Game",
       status: "playing",
       rating: 8,
       note: "Great game!",
     });
   });
 
-  it("preserve id and updatedAt when importing a catalog game", async () => {
-    const program = Effect.gen(function* () {
-      const repository = yield* LibraryRepository;
-
-      const game = yield* repository
-        .list({ query: "Hades" })
-        .pipe(Effect.map((games) => games[0]));
-
-      yield* repository.importGame(
-        {
-          ...game,
-          id: "3498",
-          steamAppId: "1145360",
-        },
-        "1145360",
-      );
-
-      const importedGame = yield* repository
-        .list({ query: "Hades" })
-        .pipe(Effect.map((games) => games[0]));
-
-      return {
-        before: game,
-        after: importedGame,
-      };
-    });
-
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(LibraryRepositoryMemory)),
-    );
-
-    expect({
-      id: result.before.id,
-      updatedAt: result.before.updatedAt,
-    }).toMatchObject({
-      id: result.after.id,
-      updatedAt: result.after.updatedAt,
-    });
-  });
-
-  it("do not import a catalog game if it already exists in the library", async () => {
+  it("does not duplicate a catalog game or overwrite its personal fields", async () => {
     const fakeGame = randomGame();
 
     const program = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
 
-      yield* repository.importGame(
-        {
-          ...fakeGame,
-          steamAppId: "demo",
-        },
-        "demo",
-      );
+      yield* repository.addManualGame(fakeGame);
+      const before = yield* repository.findById(`memory-${fakeGame.id}`);
+      yield* repository.update(before.id, { status: "playing", rating: 8 });
+      yield* repository.addManualGame(fakeGame);
 
-      yield* repository.importGame(
-        {
-          ...fakeGame,
-          steamAppId: "demo",
-        },
-        "demo",
-      );
-
-      const library = yield* repository.list();
-
-      const importedEntries = library.filter(
+      const entries = (yield* repository.list()).filter(
         (entry) => entry.rawgId === Number(fakeGame.id),
       );
-
-      yield* Effect.forEach(importedEntries, (entry) =>
-        repository.remove(entry.id),
-      );
-
-      return library;
+      return entries;
     });
 
     const result = await Effect.runPromise(
       program.pipe(Effect.provide(LibraryRepositoryMemory)),
     );
 
-    expect(
-      result.filter((game) => game.rawgId === Number(fakeGame.id)),
-    ).toHaveLength(1);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: `memory-${fakeGame.id}`,
+      status: "playing",
+      rating: 8,
+    });
   });
 
   it("Catalog is actually refreshed when refreshCatalogGames is called", async () => {

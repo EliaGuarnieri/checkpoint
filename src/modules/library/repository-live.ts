@@ -9,7 +9,6 @@ import {
   games,
   genres,
   libraryEntries,
-  ownershipSources,
 } from "~/infrastructure/database/schema";
 import type { CatalogGame } from "~/modules/catalog/model";
 import type { LibraryFilters, LibraryGame } from "~/modules/library/model";
@@ -207,18 +206,6 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
           : Effect.fail(new LibraryEntryNotFound({ gameId })),
       ),
     ),
-  importGame: (game, steamAppId) =>
-    databaseEffect("importGame", async () => {
-      const gameId = await upsertCatalogGame(game);
-      await db
-        .insert(libraryEntries)
-        .values({ gameId, status: "backlog" })
-        .onConflictDoNothing();
-      await db
-        .insert(ownershipSources)
-        .values({ gameId, provider: "steam", externalId: steamAppId })
-        .onConflictDoNothing();
-    }),
   addManualGame: (game) =>
     databaseEffect("addManualGame", async () => {
       const gameId = await upsertCatalogGame(game);

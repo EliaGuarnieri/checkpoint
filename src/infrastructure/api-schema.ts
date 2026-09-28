@@ -7,16 +7,6 @@ export const CatalogSearchInput = Schema.Struct({
   query: Schema.String.pipe(Schema.trimmed(), Schema.minLength(2)),
 });
 
-export const SteamImportPreviewInput = Schema.Struct({
-  steamId: Schema.String.pipe(Schema.trimmed(), Schema.minLength(1)),
-});
-
-export const SteamImportConfirmInput = Schema.Struct({
-  games: Schema.Array(
-    Schema.Struct({ steamAppId: Schema.String, game: CatalogGameSchema }),
-  ).pipe(Schema.maxItems(100)),
-});
-
 export const ManualGameInput = CatalogGameSchema;
 export const LibraryEntryUpdateInput = LibraryEntryUpdate;
 

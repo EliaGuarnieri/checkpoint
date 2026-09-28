@@ -102,24 +102,3 @@ export const gameCompanies = pgTable(
     primaryKey({ columns: [table.gameId, table.companyId, table.role] }),
   ],
 );
-
-export const ownershipSources = pgTable(
-  "ownership_sources",
-  {
-    gameId: uuid("game_id")
-      .notNull()
-      .references(() => games.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    externalId: text("external_id").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.gameId, table.provider] }),
-    uniqueIndex("ownership_provider_external_idx").on(
-      table.provider,
-      table.externalId,
-    ),
-  ],
-);

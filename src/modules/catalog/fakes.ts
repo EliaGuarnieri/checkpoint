@@ -1,7 +1,7 @@
-import { Effect, Layer, Option } from "effect";
+import { Effect, Layer } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
-import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
+import { GameCatalog } from "~/modules/catalog/service";
 
 const catalogGames: ReadonlyArray<CatalogGame> = [
   {
@@ -13,7 +13,6 @@ const catalogGames: ReadonlyArray<CatalogGame> = [
     genres: ["Action", "Roguelike"],
     developers: ["Supergiant Games"],
     publishers: ["Supergiant Games"],
-    steamAppId: "1145360",
   },
   {
     id: "22511",
@@ -24,7 +23,6 @@ const catalogGames: ReadonlyArray<CatalogGame> = [
     genres: ["Platformer"],
     developers: ["Maddy Makes Games"],
     publishers: ["Maddy Makes Games"],
-    steamAppId: "504230",
   },
   {
     id: "4291",
@@ -35,19 +33,10 @@ const catalogGames: ReadonlyArray<CatalogGame> = [
     genres: ["Action", "Platformer"],
     developers: ["Motion Twin"],
     publishers: ["Motion Twin"],
-    steamAppId: null,
   },
 ];
 
 export const GameCatalogFake = Layer.succeed(GameCatalog, {
-  findBySteamAppId: (steamAppId) =>
-    steamAppId === "999002"
-      ? Effect.fail(new CatalogUnavailable({ operation: "findBySteamAppId" }))
-      : Effect.succeed(
-          Option.fromNullable(
-            catalogGames.find((game) => game.steamAppId === steamAppId),
-          ),
-        ),
   searchByTitle: (title) =>
     Effect.succeed(
       catalogGames.filter((game) =>

@@ -1,12 +1,8 @@
-import { Context, Data, Effect, Option } from "effect";
+import { Context, Data, Effect } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
 
-type CatalogOperation =
-  | "findBySteamAppId"
-  | "searchByTitle"
-  | "request"
-  | "decode";
+type CatalogOperation = "searchByTitle" | "request" | "decode";
 
 export class CatalogUnavailable extends Data.TaggedError("CatalogUnavailable")<{
   readonly operation: CatalogOperation;
@@ -14,13 +10,6 @@ export class CatalogUnavailable extends Data.TaggedError("CatalogUnavailable")<{
 }> {}
 
 export interface GameCatalogService {
-  /**
-   * Finds a game in the catalog by its Steam App ID.
-   */
-  readonly findBySteamAppId: (
-    steamAppId: string,
-    title: string,
-  ) => Effect.Effect<Option.Option<CatalogGame>, CatalogUnavailable>;
   /**
    * Searches for games in the catalog by title.
    */

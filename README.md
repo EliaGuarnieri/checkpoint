@@ -1,18 +1,16 @@
 # Checkpoint
 
-Checkpoint è un diario personale per videogiochi. Importa una libreria Steam, riconcilia i titoli con un catalogo esterno e permette di tenere stato, voto e note senza sovrascriverli agli import successivi.
+Checkpoint è un diario personale per videogiochi. Cerchi un gioco nel catalogo, lo aggiungi alla libreria e annoti stato, voto e note. Ogni gioco ha una sola voce personale.
 
-Il progetto nasce come prova tecnica incentrata su [Effect](https://effect.website/). La parte interessante non è il CRUD: è trasformare dati esterni incompleti in una preview esplicita, parzialmente fallibile e idempotente.
+Il progetto è un esercizio su [Effect](https://effect.website/). Le chiamate al catalogo, la validazione degli input e la persistenza passano attraverso programmi Effect con dipendenze ed errori espliciti.
 
 ## Demo
 
-La configurazione predefinita non richiede credenziali né rete. Usa lo SteamID `demo` nella pagina `/import` per vedere corrispondenze esatte, un gioco già presente, un candidato che richiede conferma, un gioco non riconosciuto e un errore isolato.
+La configurazione predefinita usa un catalogo locale e una libreria in PostgreSQL. Non richiede API key o richieste esterne. Puoi cercare Hades, Celeste o Dead Cells e aggiungerli dalla pagina `/library`.
 
 ![Libreria di Checkpoint](docs/screenshots/library.png)
 
 ![Dettaglio di un gioco](docs/screenshots/game-detail.png)
-
-![Preview dell'importazione Steam](docs/screenshots/import-preview.png)
 
 ## Avvio rapido
 
@@ -27,113 +25,67 @@ pnpm dev
 Apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` da `.env.example`, avvia PostgreSQL, applica le migration e carica cinque voci dimostrative. Il seed è ripetibile.
 
 ```bash
-pnpm test       # sette test del dominio e dei confini HTTP
+pnpm test
 pnpm typecheck
 pnpm lint
 pnpm check      # lint + typecheck + test
 pnpm build
 ```
 
-## Modalità live e API key
+## Catalogo RAWG
 
-Le credenziali restano esclusivamente in `.env`, ignorato da Git. Le chiavi gratuite non vanno committate: possono essere usate da terzi per consumare la quota o generare traffico attribuito al proprietario.
-
-### RAWG
-
-1. Crea o accedi a un account su [RAWG](https://rawg.io/login).
-2. Apri [RAWG API](https://rawg.io/apidocs) e genera una API key.
-3. Rispetta i termini e l'attribuzione richiesta da RAWG.
-4. Configura:
+La demo usa `CATALOG_PROVIDER=fake`. Per cercare nel catalogo live, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e imposta queste variabili in `.env`:
 
 ```env
 CATALOG_PROVIDER=live
 RAWG_API_KEY=la-tua-chiave
 ```
 
-### Steam
-
-1. Accedi a Steam.
-2. Visita [Steam Web API Key](https://steamcommunity.com/dev/apikey).
-3. Inserisci il dominio richiesto da Steam e accetta i termini.
-4. Configura:
-
-```env
-STEAM_PROVIDER=live
-STEAM_API_KEY=la-tua-chiave
-```
-
-`GetOwnedGames` funziona soltanto se il profilo e i dettagli dei giochi posseduti sono visibili. Checkpoint usa SteamID64, non il nome pubblico del profilo. RAWG e Steam possono essere attivati indipendentemente.
+Non committare `.env`. L'interfaccia mostra l'attribuzione RAWG quando usa il catalogo live.
 
 ## Funzionalità
 
-- libreria single-user con backlog, in corso, completato e abbandonato;
-- voto intero opzionale da 1 a 10 e una nota personale;
-- ricerca e aggiunta manuale dal catalogo;
-- filtri per titolo, stato e metadati, con ordinamento;
-- import Steam in due passaggi, massimo 100 giochi e quattro riconciliazioni concorrenti;
-- corrispondenza esatta tramite Steam App ID e candidati per titolo mai salvati automaticamente;
-- reimportazioni che non modificano dati personali;
-- adapter live e fake per entrambe le API.
+- Una voce personale per gioco, con stato `backlog`, `playing`, `completed` o `abandoned`.
+- Voto intero opzionale da 1 a 10 e una nota.
+- Ricerca nel catalogo e aggiunta manuale alla libreria.
+- Filtri per titolo, stato, genere, sviluppatore, editore e voto minimo.
+- Ordinamento per ultimo aggiornamento, titolo, voto o data di uscita.
 
 ## Architettura
 
 ```mermaid
 flowchart LR
   UI[Next.js + TanStack Query] --> API[Route Handlers]
-  API --> Import[Steam import program]
-  Import --> Steam[SteamLibrary service]
-  Import --> Catalog[GameCatalog service]
-  Import --> Library[LibraryRepository]
-  Steam --> SteamLive[Steam Web API]
-  Steam --> SteamFake[Deterministic fake]
-  Catalog --> Rawg[RAWG API]
-  Catalog --> CatalogFake[Deterministic fake]
+  API --> Catalog[GameCatalog]
+  API --> Library[LibraryRepository]
+  Catalog --> Rawg[RAWG API o catalogo demo]
   Library --> Drizzle[Drizzle ORM]
   Drizzle --> Postgres[(PostgreSQL)]
 ```
 
-Il codice applicativo è organizzato per capacità in `src/modules`. Le dipendenze tecniche vivono in `src/infrastructure`. Il vocabolario è in [`CONTEXT.md`](CONTEXT.md) e la specifica verificata dalla review è in [`docs/spec.md`](docs/spec.md).
+Il codice applicativo è organizzato in `src/modules`; gli adapter e la configurazione sono in `src/infrastructure`. Il vocabolario è in [`CONTEXT.md`](CONTEXT.md), la specifica in [`docs/spec.md`](docs/spec.md) e le scelte di perimetro in [`docs/adr/`](docs/adr/).
 
 ### Come viene usato Effect
 
-- `Context.Tag` definisce `GameCatalog`, `SteamLibrary` e `LibraryRepository`.
-- `Layer` sceglie adapter live, fake o di test senza modificare il workflow.
-- `Schema` decodifica input HTTP, configurazione e risposte esterne.
-- `Data.TaggedError` distingue errori Steam, catalogo, database e voci mancanti.
-- `Effect.forEach` limita la riconciliazione a quattro giochi concorrenti.
-- `Schedule` ritenta le richieste RAWG fallite con backoff e limite.
-- `Effect.catchTag` trasforma il fallimento di un singolo gioco in un risultato parziale.
+- `Context.Tag` dichiara `GameCatalog` e `LibraryRepository`.
+- `Layer` sceglie gli adapter live, demo o in memoria.
+- `Schema` decodifica input HTTP, configurazione e risposte RAWG.
+- `Data.TaggedError` distingue errori del catalogo, del database e voci mancanti.
+- `Effect.forEach` limita a quattro le richieste di dettaglio RAWG concorrenti.
+- `Schedule` ritenta le richieste RAWG fallite con un limite.
 
-TanStack Query gestisce soltanto query, mutation e invalidazione nel browser. Retry, concorrenza, configurazione ed errori server restano in Effect. Drizzle è l'unica astrazione SQL; i repository restituiscono `Effect`.
+TanStack Query gestisce query, mutation e invalidazione della cache nel browser. Effect gestisce i confini del server e le dipendenze dei programmi. Drizzle gestisce le query SQL; le interfacce dei repository restituiscono valori `Effect`.
 
-## Decisioni e compromessi
+## Decisioni
 
-- Nessuna autenticazione o tabella utenti: il prototipo è esplicitamente single-user.
-- La preview non viene persistita. Se si chiude la pagina, viene rigenerata.
-- Nessun job in background: il limite di 100 giochi mantiene prevedibile una richiesta HTTP.
-- Il tempo giocato non viene importato, perché introdurrebbe sincronizzazione e più piattaforme.
-- I metadati vengono salvati localmente e aggiornati quando il gioco ricompare in una ricerca o importazione.
-- Generi e aziende sono relazioni SQL, non JSON, perché sono filtri di prima classe.
+Il prototipo è single-user: non ha autenticazione o tabella utenti. La ricerca aggiorna gli snapshot locali dei giochi, ma non crea voci personali. Solo l'azione esplicita "Aggiungi" crea una voce in libreria. Se la voce esiste già, l'aggiunta non modifica stato, voto o nota.
 
-## Test
+L'importazione Steam e il tracciamento delle fonti di possesso sono stati rimossi per concentrare il progetto sul diario e sui flussi Effect ancora utili. La [decisione di perimetro](docs/adr/0001-focus-on-personal-library.md) documenta anche la migration che elimina le vecchie associazioni senza cancellare le voci personali.
 
-I test osservano interfacce pubbliche. Verificano classificazione e fallimenti parziali della preview, limite dell'importazione, indisponibilità Steam, conferma selettiva e vincoli del voto. I layer fake sostituiscono API e repository senza mockare funzioni interne.
+## Test ed esercizi
 
-## Uso dell'AI e delle skill
+I test coprono il repository in memoria e il confine HTTP. `pnpm check` esegue lint, typecheck e test. Le sei [schede di studio](exercises/README.md) propongono cambiamenti progressivi nei flussi di catalogo, libreria, configurazione e chiamate esterne.
 
-Ho usato Codex come partner di progettazione e implementazione. Le decisioni sono state messe sotto pressione prima di scrivere codice; ho poi controllato diff, test, typecheck, lint e comportamento dell'app.
+## Uso dell'AI
 
-Skill utilizzate:
-
-- `grill-with-docs`, `grilling` e `domain-modeling` per restringere lo scope e fissare il linguaggio in `CONTEXT.md`;
-- `shadcn` per leggere la configurazione, consultare la documentazione aggiornata e aggiungere componenti dal registry ufficiale;
-- `implement` e `tdd` per sviluppare a slice verticali partendo dal workflow d'importazione;
-- `code-review` per la verifica finale separata tra standard del repository e specifica.
-
-L'AI ha aiutato a consultare documentazione, proporre alternative, generare porzioni di codice e casi di test. Ho mantenuto la responsabilità delle scelte, escluso funzionalità non giustificate e verificato ogni comando. `docs/spec.md`, `CODING_STANDARDS.md` e il commit di base rendono la review riproducibile.
-
-## Cosa ho imparato
-
-Il valore principale di Effect, in questo progetto, è rendere espliciti dipendenze e fallimenti. La stessa importazione gira con servizi live, fake e di test; un errore locale diventa un dato della preview invece di interrompere implicitamente l'intera operazione.
-
-Con più tempo approfondirei interruzioni e scope durante richieste lunghe, test d'integrazione dei repository contro Postgres e una coda persistente per librerie molto grandi. Non aggiungerei funzioni social prima di aver risolto bene questi aspetti.
+Codex ha aiutato a esaminare il codice, restringere il perimetro e aggiornare implementazione e documenti. Le decisioni sul prodotto sono state confermate prima delle modifiche. Ho verificato il risultato con i controlli del repository.

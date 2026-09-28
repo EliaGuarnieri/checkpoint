@@ -6,7 +6,6 @@ import {
   games,
   genres,
   libraryEntries,
-  ownershipSources,
 } from "../src/infrastructure/database/schema";
 
 const seedGames = [
@@ -22,7 +21,6 @@ const seedGames = [
     genres: ["Action", "Roguelike"],
     developer: "Supergiant Games",
     publisher: "Supergiant Games",
-    steamAppId: "1145360",
   },
   {
     id: "00000000-0000-4000-8000-000000000002",
@@ -36,7 +34,6 @@ const seedGames = [
     genres: ["RPG"],
     developer: "CD Projekt RED",
     publisher: "CD Projekt",
-    steamAppId: "292030",
   },
   {
     id: "00000000-0000-4000-8000-000000000003",
@@ -50,7 +47,6 @@ const seedGames = [
     genres: ["Action", "Adventure"],
     developer: "Rockstar Games",
     publisher: "Rockstar Games",
-    steamAppId: "1174180",
   },
   {
     id: "00000000-0000-4000-8000-000000000004",
@@ -64,7 +60,6 @@ const seedGames = [
     genres: ["Action", "Platformer"],
     developer: "Team Cherry",
     publisher: "Team Cherry",
-    steamAppId: "367520",
   },
   {
     id: "00000000-0000-4000-8000-000000000005",
@@ -78,7 +73,6 @@ const seedGames = [
     genres: ["RPG", "Simulation"],
     developer: "ConcernedApe",
     publisher: "ConcernedApe",
-    steamAppId: "413150",
   },
 ];
 
@@ -103,15 +97,6 @@ async function seed() {
         note: game.note,
       })
       .onConflictDoNothing();
-    await db
-      .insert(ownershipSources)
-      .values({
-        gameId: game.id,
-        provider: "steam",
-        externalId: game.steamAppId,
-      })
-      .onConflictDoNothing();
-
     for (const name of game.genres) {
       const [genre] = await db
         .insert(genres)

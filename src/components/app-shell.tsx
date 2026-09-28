@@ -1,4 +1,4 @@
-import { Gamepad2Icon, LibraryIcon, RefreshCcwIcon } from "lucide-react";
+import { Gamepad2Icon, LibraryIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -31,13 +31,6 @@ export function AppShell({ children }: { readonly children: ReactNode }) {
             >
               <LibraryIcon data-icon="inline-start" />
               Libreria
-            </Link>
-            <Link
-              href="/import"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              <RefreshCcwIcon data-icon="inline-start" />
-              Importa
             </Link>
             <ThemeSelector />
           </nav>

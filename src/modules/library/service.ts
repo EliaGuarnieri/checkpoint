@@ -12,7 +12,6 @@ export type LibraryOperation =
   | "containsCatalogGame"
   | "list"
   | "findById"
-  | "importGame"
   | "addManualGame"
   | "update"
   | "remove"
@@ -60,17 +59,7 @@ export interface LibraryRepositoryService {
     gameId: string,
   ) => Effect.Effect<LibraryGame, DatabaseUnavailable | LibraryEntryNotFound>;
   /**
-   * Imports a catalog game into the library.
-   * - Creates a new library entry for the game if it doesn't exist.
-   * - Saves or updates game metadata in the library.
-   * - Records Steam ownership information for the game.
-   */
-  readonly importGame: (
-    game: CatalogGame,
-    steamAppId: string,
-  ) => Effect.Effect<void, DatabaseUnavailable>;
-  /**
-   * Adds a manual game to the library. Same as importGame but without a steamAppId. This is used for games that are not in the catalog.
+   * Adds a catalog game to the personal library without changing an existing entry.
    */
   readonly addManualGame: (
     game: CatalogGame,

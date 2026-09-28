@@ -9,7 +9,6 @@ export const CatalogGameSchema = Schema.Struct({
   genres: Schema.Array(Schema.String),
   developers: Schema.Array(Schema.String),
   publishers: Schema.Array(Schema.String),
-  steamAppId: Schema.NullOr(Schema.String),
 });
 
 export type CatalogGame = typeof CatalogGameSchema.Type;
