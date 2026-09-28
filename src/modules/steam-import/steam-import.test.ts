@@ -104,10 +104,12 @@ describe("previewSteamImport", () => {
         Effect.fail(new SteamLibraryUnavailable({ steamId })),
     });
 
-    const SteamLayer = Layer.merge(SteamFailure, SteamImportTestLayer);
+    const SteamLayer = Layer.merge(SteamImportTestLayer, SteamFailure);
+
     const program = previewSteamImport("private").pipe(
       Effect.provide(SteamLayer),
     );
+
     const preview = await Effect.runPromise(Effect.flip(program));
 
     expect(preview).toMatchObject({
