@@ -10,12 +10,18 @@ import {
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
+  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { GameCover } from "~/components/game-cover";
-import { Input } from "~/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "~/components/ui/input-group";
 import { Kbd, KbdGroup } from "~/components/ui/kbd";
 import { fetchJson } from "~/lib/api";
 import {
@@ -171,16 +177,12 @@ export function GlobalSearch() {
       className="relative col-span-2 row-start-2 min-w-0 lg:col-span-1 lg:row-start-auto"
       ref={root}
     >
-      <div className="relative text-muted-foreground">
-        <SearchIcon
-          size={18}
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2"
-        />
-        <Input
+      <InputGroup className="h-10 bg-card">
+        <InputGroupInput
           ref={input}
           id="global-search"
-          type="search"
+          type="text"
+          inputMode="search"
           autoComplete="off"
           aria-label="Cerca un gioco nella libreria e nel catalogo RAWG"
           role="combobox"
@@ -194,7 +196,7 @@ export function GlobalSearch() {
           }
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
           placeholder="Cerca un gioco o aggiungilo…"
-          className="h-10 w-full bg-card pr-23 pl-10 text-foreground"
+          className="h-full"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -237,14 +239,30 @@ export function GlobalSearch() {
             }
           }}
         />
-        <KbdGroup
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
-        >
-          <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
-          <Kbd>K</Kbd>
-        </KbdGroup>
-      </div>
+        <InputGroupAddon align="inline-start">
+          <SearchIcon aria-hidden="true" />
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end">
+          {query.length > 0 ? (
+            <InputGroupButton
+              size="icon-sm"
+              aria-label="Cancella ricerca"
+              onClick={() => {
+                setQuery("");
+                setActiveIndex(-1);
+                input.current?.focus();
+              }}
+            >
+              <XIcon aria-hidden="true" />
+            </InputGroupButton>
+          ) : (
+            <KbdGroup aria-hidden="true">
+              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+              <Kbd>K</Kbd>
+            </KbdGroup>
+          )}
+        </InputGroupAddon>
+      </InputGroup>
       {showPanel && (
         <section
           id="global-search-results"
@@ -307,8 +325,24 @@ export function GlobalSearch() {
                     </small>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                    <span className="hidden sm:inline">Apri</span>
-                    <ArrowUpRightIcon size={17} aria-hidden="true" />
+                    {/* <span className="hidden sm:inline">Apri</span> */}
+                    <Button
+                      variant="outline"
+                      render={<span />}
+                      nativeButton={false}
+                      size="xs"
+                      className="max-sm:hidden"
+                    >
+                      Apri{" "}
+                      <Kbd data-icon="inline-end" className="translate-x-0.5">
+                        ⏎
+                      </Kbd>
+                    </Button>
+                    <ArrowUpRightIcon
+                      size={17}
+                      aria-hidden="true"
+                      className="sm:hidden"
+                    />
                   </span>
                 </button>
               ))}
@@ -380,10 +414,6 @@ export function GlobalSearch() {
                           ⏎
                         </Kbd>
                       </Button>
-                      {/* <span className="hidden sm:inline">Aggiungi</span>
-                      <Kbd aria-hidden="true" className="hidden sm:inline-flex">
-                        ⏎
-                      </Kbd> */}
                       <PlusIcon
                         className="sm:hidden"
                         size={17}
