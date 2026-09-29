@@ -7,7 +7,6 @@ import { cn } from "cn";
 import { Schema } from "effect";
 import {
   ArrowUpRightIcon,
-  CommandIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -17,12 +16,14 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { GameCover } from "~/components/game-cover";
 import { Input } from "~/components/ui/input";
+import { Kbd, KbdGroup } from "~/components/ui/kbd";
 import { fetchJson } from "~/lib/api";
 import {
   CatalogGamePreviewSchema,
   type CatalogGamePreview,
 } from "~/modules/catalog/model";
 import { LibraryGameSchema, type LibraryGame } from "~/modules/library/model";
+import { Button } from "./ui/button";
 
 const LibraryResponse = Schema.Array(LibraryGameSchema);
 const CatalogResponse = Schema.Array(CatalogGamePreviewSchema);
@@ -193,7 +194,7 @@ export function GlobalSearch() {
           }
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
           placeholder="Cerca un gioco o aggiungilo…"
-          className="h-10 w-full bg-card pr-12 pl-10 text-foreground"
+          className="h-10 w-full bg-card pr-23 pl-10 text-foreground"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -236,17 +237,13 @@ export function GlobalSearch() {
             }
           }}
         />
-        <kbd
+        <KbdGroup
           aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
         >
-          {isMac ? (
-            <CommandIcon className="inline size-3" aria-hidden="true" />
-          ) : (
-            "Ctrl"
-          )}{" "}
-          K
-        </kbd>
+          <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+          <Kbd>K</Kbd>
+        </KbdGroup>
       </div>
       {showPanel && (
         <section
@@ -371,8 +368,27 @@ export function GlobalSearch() {
                       </small>
                     </span>
                     <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                      <span className="hidden sm:inline">Aggiungi</span>
-                      <PlusIcon size={17} aria-hidden="true" />
+                      <Button
+                        variant="outline"
+                        render={<span />}
+                        nativeButton={false}
+                        size="xs"
+                        className="max-sm:hidden"
+                      >
+                        Aggiungi{" "}
+                        <Kbd data-icon="inline-end" className="translate-x-0.5">
+                          ⏎
+                        </Kbd>
+                      </Button>
+                      {/* <span className="hidden sm:inline">Aggiungi</span>
+                      <Kbd aria-hidden="true" className="hidden sm:inline-flex">
+                        ⏎
+                      </Kbd> */}
+                      <PlusIcon
+                        className="sm:hidden"
+                        size={17}
+                        aria-hidden="true"
+                      />
                     </span>
                   </button>
                 ))

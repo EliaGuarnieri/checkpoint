@@ -14,6 +14,16 @@ import { useState } from "react";
 
 import { GameCover } from "~/components/game-cover";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -32,6 +42,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Separator } from "~/components/ui/separator";
 import { Slider } from "~/components/ui/slider";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
@@ -288,7 +299,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                 Resta privata nella tua libreria.
               </FieldDescription>
             </Field>
-            {(update.isError || remove.isError) && (
+            {update.isError && (
               <Alert variant="destructive">
                 <AlertTitle>Modifica non riuscita</AlertTitle>
                 <AlertDescription>
@@ -366,38 +377,76 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             . Stato, voto e nota sono tuoi.
           </p>
           {game.rawgId !== null && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-6"
-              disabled={refresh.isPending}
-              onClick={() => refresh.mutate()}
-            >
-              {refresh.isPending ? (
-                <Spinner data-icon="inline-start" />
-              ) : (
-                <RefreshCwIcon data-icon="inline-start" />
+            <div className="mt-6 flex flex-col items-start gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={refresh.isPending}
+                onClick={() => refresh.mutate()}
+              >
+                {refresh.isPending ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <RefreshCwIcon data-icon="inline-start" />
+                )}
+                Aggiorna dati del gioco
+              </Button>
+              {refresh.isError && (
+                <p className="text-sm text-destructive">
+                  Aggiornamento non riuscito. Riprova tra poco.
+                </p>
               )}
-              Aggiorna dati del gioco
-            </Button>
+            </div>
           )}
-          {refresh.isError && (
-            <p className="mt-2 text-sm text-destructive">
-              Aggiornamento non riuscito. Riprova tra poco.
+          <Separator className="my-6" />
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              La rimozione elimina anche stato, voto e nota personali.
             </p>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-6"
-            disabled={remove.isPending}
-            onClick={() => {
-              if (window.confirm(`Rimuovere ${game.title} dalla libreria?`))
-                remove.mutate();
-            }}
-          >
-            <Trash2Icon data-icon="inline-start" /> Rimuovi dalla libreria
-          </Button>
+            <AlertDialog onOpenChange={(open) => open && remove.reset()}>
+              <AlertDialogTrigger
+                render={<Button variant="destructive" size="sm" />}
+                disabled={remove.isPending}
+              >
+                <Trash2Icon data-icon="inline-start" /> Rimuovi dalla libreria
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Rimuovere {game.title}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Il gioco verrà rimosso dalla tua libreria. Stato, voto e
+                    nota personali andranno persi. Questa azione non può essere
+                    annullata.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {remove.isError && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Rimozione non riuscita</AlertTitle>
+                    <AlertDescription>
+                      Il gioco è ancora nella tua libreria. Riprova tra poco.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={remove.isPending}>
+                    Annulla
+                  </AlertDialogCancel>
+                  <Button
+                    variant="destructive"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate()}
+                  >
+                    {remove.isPending ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <Trash2Icon data-icon="inline-start" />
+                    )}
+                    Rimuovi il gioco
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </aside>
       </div>
     </article>
