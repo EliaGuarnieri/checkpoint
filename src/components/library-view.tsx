@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Slider } from "~/components/ui/slider";
 import { fetchJson } from "~/lib/api";
 import {
   LibraryGameSchema,
@@ -64,7 +65,7 @@ export function LibraryView() {
   const [genre, setGenre] = useState("");
   const [developer, setDeveloper] = useState("");
   const [publisher, setPublisher] = useState("");
-  const [minimumRating, setMinimumRating] = useState("");
+  const [minimumRating, setMinimumRating] = useState(0);
   const [sort, setSort] = useState<Sort>("updated");
   const library = useQuery({
     queryKey: ["library", "all"],
@@ -141,7 +142,7 @@ export function LibraryView() {
                 if (value) setSort(value as Sort);
               }}
             >
-              <SelectTrigger aria-label="Ordina libreria" className="w-[190px]">
+              <SelectTrigger aria-label="Ordina libreria" className="w-47.5">
                 <SelectValue>
                   {(value) => sortLabels[value as Sort] ?? "Ordina"}
                 </SelectValue>
@@ -191,7 +192,7 @@ export function LibraryView() {
                 <Badge variant="secondary">{advancedCount}</Badge>
               )}
             </summary>
-            <div className="z-20 mt-2 grid gap-4 rounded-xl border border-border bg-popover p-4 shadow-xl sm:grid-cols-2 xl:absolute xl:right-0 xl:w-[560px]">
+            <div className="z-20 mt-2 grid gap-4 rounded-xl border border-border bg-popover p-4 shadow-xl sm:grid-cols-2 xl:absolute xl:right-0 xl:w-140">
               <Field>
                 <FieldLabel htmlFor="library-query">Titolo</FieldLabel>
                 <div className="relative">
@@ -239,15 +240,26 @@ export function LibraryView() {
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="library-rating">Voto minimo</FieldLabel>
-                <Input
-                  id="library-rating"
-                  type="number"
-                  min={1}
+                <FieldLabel>Voto minimo</FieldLabel>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Qualsiasi voto</span>
+                  <strong className="font-semibold tabular-nums">
+                    {minimumRating ? `${minimumRating}/10` : "—"}
+                  </strong>
+                </div>
+                <Slider
+                  min={0}
                   max={10}
+                  step={1}
                   value={minimumRating}
-                  onChange={(event) => setMinimumRating(event.target.value)}
-                  placeholder="Da 1 a 10"
+                  onValueChange={(value) => setMinimumRating(value as number)}
+                  thumbLabel="Voto minimo"
+                  valueText={
+                    minimumRating
+                      ? `Almeno ${minimumRating} su 10`
+                      : "Nessun voto minimo"
+                  }
+                  className="py-3"
                 />
               </Field>
               <Button
@@ -258,7 +270,7 @@ export function LibraryView() {
                   setGenre("");
                   setDeveloper("");
                   setPublisher("");
-                  setMinimumRating("");
+                  setMinimumRating(0);
                 }}
               >
                 Azzera filtri
@@ -362,7 +374,7 @@ export function LibraryView() {
                       setGenre("");
                       setDeveloper("");
                       setPublisher("");
-                      setMinimumRating("");
+                      setMinimumRating(0);
                     }
                   : focusSearch
               }
