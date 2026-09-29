@@ -52,6 +52,10 @@ Usare i token semantici di shadcn tramite utility Tailwind: `bg-background`, `te
 
 Geist è il font di corpo **e** titoli. Geist Mono è riservato a scorciatoie e dati che richiedono un monospace. I font sono caricati da `next/font/google` in `src/app/layout.tsx` e collegati a `typeset-docs` in `src/styles/typeset.css`. La gerarchia usa dimensioni, peso e spaziatura di Tailwind; non introduce un font editoriale separato.
 
+## Marchio
+
+`src/app/icon.svg` contiene il simbolo Checkpoint: una C aperta che inquadra un rombo. La stessa risorsa compare nell'header e come icona del sito. Nell'header il nome resta testo Geist, così segue i colori semantici dei temi. `docs/brand/checkpoint-brandkit.png` documenta il concept; le sue schermate sono illustrative.
+
 ## Implementazione delle pagine
 
 - Comporre layout, spazi, griglie, responsive, hover e focus direttamente con utility Tailwind nei componenti. Evitare nuovi selettori in `globals.css` e colori arbitrari.
