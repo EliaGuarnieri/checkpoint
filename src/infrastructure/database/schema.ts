@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   check,
   date,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -79,7 +80,10 @@ export const gameGenres = pgTable(
       .notNull()
       .references(() => genres.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.gameId, table.genreId] })],
+  (table) => [
+    primaryKey({ columns: [table.gameId, table.genreId] }),
+    index("game_genres_genre_id_idx").on(table.genreId),
+  ],
 );
 
 export const companies = pgTable("companies", {
@@ -100,5 +104,6 @@ export const gameCompanies = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.gameId, table.companyId, table.role] }),
+    index("game_companies_company_id_idx").on(table.companyId),
   ],
 );
