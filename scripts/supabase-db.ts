@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseEnv } from "node:util";
 
 import { Effect, ManagedRuntime } from "effect";
 
 const fileVariables = parseEnv(readFileSync(".env.supabase.local", "utf8"));
+const caPath = resolve("certs/supabase-ca.crt");
 
 const connection = (name: "DATABASE_URL" | "DATABASE_MIGRATION_URL") => {
   const value = fileVariables[name];
@@ -47,10 +49,7 @@ const main = async () => {
       "DATABASE_URL must use the transaction pooler on port 6543",
     );
   }
-  runtimeUrl.searchParams.set(
-    "sslmode",
-    runtimeUrl.searchParams.get("sslmode") ?? "require",
-  );
+  runtimeUrl.searchParams.set("sslmode", "verify-full");
   process.env.DATABASE_URL = runtimeUrl.toString();
 
   switch (process.argv[2]) {
@@ -64,10 +63,8 @@ const main = async () => {
       if (projectRef(runtimeUrl) !== projectRef(migrationUrl)) {
         throw new Error("Supabase URLs must belong to the same project");
       }
-      migrationUrl.searchParams.set(
-        "sslmode",
-        migrationUrl.searchParams.get("sslmode") ?? "require",
-      );
+      migrationUrl.searchParams.set("sslmode", "verify-full");
+      migrationUrl.searchParams.set("sslrootcert", caPath);
 
       const result = spawnSync(
         process.execPath,
