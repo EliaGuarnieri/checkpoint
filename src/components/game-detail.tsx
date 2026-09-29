@@ -16,8 +16,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
 } from "~/components/ui/field";
-import { Input } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Slider } from "~/components/ui/slider";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { fetchJson } from "~/lib/api";
@@ -81,16 +82,11 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<TrackingStatus>(game.status);
-  const [rating, setRating] = useState(game.rating?.toString() ?? "");
+  const [rating, setRating] = useState(game.rating ?? 0);
   const [note, setNote] = useState(game.note ?? "");
-  const invalidRating =
-    rating !== "" &&
-    (!Number.isInteger(Number(rating)) ||
-      Number(rating) < 1 ||
-      Number(rating) > 10);
   const dirty =
     status !== game.status ||
-    rating !== (game.rating?.toString() ?? "") ||
+    rating !== (game.rating ?? 0) ||
     note !== (game.note ?? "");
   const update = useMutation({
     mutationFn: () =>
@@ -99,7 +95,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
-          rating: rating ? Number(rating) : null,
+          rating: rating || null,
           note: note || null,
         }),
       }),
@@ -233,35 +229,30 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                   {statuses.find((item) => item.value === status)?.description}
                 </FieldDescription>
               </Field>
-              <Field data-invalid={invalidRating}>
-                <FieldLabel htmlFor="rating">
-                  Il tuo voto{" "}
-                  <span className="font-normal text-muted-foreground">
-                    Facoltativo
-                  </span>
-                </FieldLabel>
-                <div className="relative">
-                  <Input
-                    id="rating"
-                    type="number"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={rating}
-                    onChange={(event) => setRating(event.target.value)}
-                    aria-invalid={invalidRating}
-                    placeholder="—"
-                    className="pr-12"
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
-                    / 10
-                  </span>
+              <Field>
+                <div className="flex items-baseline justify-between gap-3">
+                  <FieldTitle>Il tuo voto</FieldTitle>
+                  <strong className="text-sm font-semibold tabular-nums">
+                    {rating ? `${rating}/10` : "Senza voto"}
+                  </strong>
                 </div>
-                <FieldDescription>
-                  {invalidRating
-                    ? "Inserisci un numero intero da 1 a 10."
-                    : "Un numero intero da 1 a 10."}
-                </FieldDescription>
+                <Slider
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={rating}
+                  onValueChange={(value) => setRating(value as number)}
+                  thumbLabel="Il tuo voto"
+                  valueText={rating ? `${rating} su 10` : "Senza voto"}
+                  className="py-3"
+                />
+                <div
+                  className="flex justify-between text-xs text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  <span>Senza voto</span>
+                  <span>10</span>
+                </div>
               </Field>
             </div>
             <Field>
@@ -273,7 +264,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               </FieldLabel>
               <Textarea
                 id="note"
-                rows={8}
+                className="min-h-28"
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Un momento da ricordare, una cosa da fare quando torni a giocare…"
@@ -296,7 +287,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               </span>
               <Button
                 onClick={() => update.mutate()}
-                disabled={!dirty || invalidRating || update.isPending}
+                disabled={!dirty || update.isPending}
               >
                 {update.isPending ? (
                   <Spinner data-icon="inline-start" />
