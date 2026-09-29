@@ -11,14 +11,14 @@ vi.mock("~/infrastructure/app-layer", async () => {
   const { LibraryEntryNotFound, LibraryRepository } =
     await import("~/modules/library/service");
   const repository: LibraryRepositoryService = {
-    refreshCatalogGames: () => Effect.void,
-    containsCatalogGame: () => Effect.succeed(false),
     list: () => Effect.succeed([]),
     findById: (gameId) => Effect.fail(new LibraryEntryNotFound({ gameId })),
     addManualGame: (game) =>
       Effect.sync(() => {
         captured.game = game;
+        return "library-entry-3498";
       }),
+    refreshCatalogGame: () => Effect.void,
     update: () => Effect.void,
     remove: () => Effect.void,
   };
@@ -47,6 +47,10 @@ describe("add catalog game route", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      added: true,
+      id: "library-entry-3498",
+    });
     expect(captured.game).toMatchObject({
       id: "3498",
       developers: ["Supergiant Games"],

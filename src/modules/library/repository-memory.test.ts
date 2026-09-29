@@ -22,6 +22,17 @@ const randomGame = (): CatalogGame => {
 };
 
 describe("LibraryRepositoryMemory", () => {
+  it("uses the shared library search policy", async () => {
+    const entries = await Effect.runPromise(
+      Effect.gen(function* () {
+        const repository = yield* LibraryRepository;
+        return yield* repository.list({ genre: "rogue" });
+      }).pipe(Effect.provide(LibraryRepositoryMemory)),
+    );
+
+    expect(entries.map(({ title }) => title)).toEqual(["Hades"]);
+  });
+
   it("adds a catalog game and updates its personal entry", async () => {
     const program = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
@@ -63,7 +74,10 @@ describe("LibraryRepositoryMemory", () => {
       yield* repository.addManualGame(fakeGame);
       const before = yield* repository.findById(`memory-${fakeGame.id}`);
       yield* repository.update(before.id, { status: "playing", rating: 8 });
-      yield* repository.addManualGame(fakeGame);
+      yield* repository.addManualGame({
+        ...fakeGame,
+        title: "Unwanted replacement title",
+      });
 
       const entries = (yield* repository.list()).filter(
         (entry) => entry.rawgId === Number(fakeGame.id),
@@ -78,74 +92,39 @@ describe("LibraryRepositoryMemory", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       id: `memory-${fakeGame.id}`,
+      title: fakeGame.title,
       status: "playing",
       rating: 8,
     });
   });
 
-  it("Catalog is actually refreshed when refreshCatalogGames is called", async () => {
-    const fakeGame = randomGame();
-
-    const program = Effect.gen(function* () {
-      const repository = yield* LibraryRepository;
-
-      yield* repository.addManualGame(fakeGame);
-
-      const addedEntry = yield* repository
-        .list({ query: fakeGame.title })
-        .pipe(Effect.map((games) => games[0]));
-
-      yield* repository.update(addedEntry.id, {
-        status: "playing",
-        rating: 8,
-        note: "Great game!",
-      });
-
-      yield* repository.refreshCatalogGames([
-        {
-          ...fakeGame,
-          title: "Manual Game Updated",
-        },
-      ]);
-
-      const refreshedGame = yield* repository.findById(addedEntry.id);
-
-      yield* repository.remove(addedEntry.id);
-
-      return refreshedGame;
-    }).pipe(Effect.provide(LibraryRepositoryMemory));
-
-    const result = await Effect.runPromise(program);
-
-    expect(result).toMatchObject({
-      title: "Manual Game Updated",
-      status: "playing",
-      rating: 8,
-      note: "Great game!",
-    });
-  });
-
-  it("refreshCatalogGames does not add new entries to the library", async () => {
-    const fakeGame = randomGame();
-
-    const program = Effect.gen(function* () {
-      const repository = yield* LibraryRepository;
-
-      yield* repository.refreshCatalogGames([
-        {
-          ...fakeGame,
-          id: "900002",
-        },
-      ]);
-
-      return yield* repository.containsCatalogGame("900002");
-    });
-
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(LibraryRepositoryMemory)),
+  it("refreshes a library entry snapshot without changing personal fields", async () => {
+    const game = randomGame();
+    const refreshed = await Effect.runPromise(
+      Effect.gen(function* () {
+        const repository = yield* LibraryRepository;
+        const entryId = yield* repository.addManualGame(game);
+        yield* repository.update(entryId, {
+          status: "playing",
+          rating: 8,
+          note: "Da continuare",
+        });
+        yield* repository.refreshCatalogGame(entryId, {
+          ...game,
+          title: "Titolo aggiornato",
+          genres: ["Adventure"],
+        });
+        return yield* repository.findById(entryId);
+      }).pipe(Effect.provide(LibraryRepositoryMemory)),
     );
 
-    expect(result).toBe(false);
+    expect(refreshed).toMatchObject({
+      title: "Titolo aggiornato",
+      genres: ["Adventure"],
+      status: "playing",
+      rating: 8,
+      note: "Da continuare",
+    });
   });
 
   it("remove removes the entry from the library", async () => {
@@ -162,14 +141,14 @@ describe("LibraryRepositoryMemory", () => {
 
       yield* repository.remove(addedEntry.id);
 
-      return yield* repository.containsCatalogGame(fakeGame.id);
+      return yield* repository.list({ query: fakeGame.title });
     });
 
     const result = await Effect.runPromise(
       program.pipe(Effect.provide(LibraryRepositoryMemory)),
     );
 
-    expect(result).toBe(false);
+    expect(result).toEqual([]);
   });
 
   it("update updates the entry in the library and could be partial", async () => {

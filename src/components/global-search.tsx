@@ -23,7 +23,10 @@ import { LibraryGameSchema } from "~/modules/library/model";
 
 const LibraryResponse = Schema.Array(LibraryGameSchema);
 const CatalogResponse = Schema.Array(CatalogGamePreviewSchema);
-const AddedResponse = Schema.Struct({ added: Schema.Literal(true) });
+const AddedResponse = Schema.Struct({
+  added: Schema.Literal(true),
+  id: Schema.String,
+});
 
 export function GlobalSearch() {
   const router = useRouter();
@@ -84,17 +87,12 @@ export function GlobalSearch() {
   });
   const add = useMutation({
     mutationFn: async (game: CatalogGamePreview) => {
-      await fetchJson(AddedResponse, "/api/library", {
+      const added = await fetchJson(AddedResponse, "/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: game.id }),
       });
-      const entries = await fetchJson(LibraryResponse, "/api/library");
-      const entry = entries.find(
-        (item) => item.rawgId === Number(game.id) || item.slug === game.slug,
-      );
-      if (!entry) throw new Error("La nuova voce non è stata trovata.");
-      return entry.id;
+      return added.id;
     },
     onSuccess: async (id) => {
       await queryClient.invalidateQueries({ queryKey: ["library"] });

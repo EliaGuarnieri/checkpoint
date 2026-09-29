@@ -36,8 +36,8 @@ export async function POST(request: Request) {
     const catalog = yield* GameCatalog;
     const game = yield* catalog.findById(id);
     const library = yield* LibraryRepository;
-    yield* library.addManualGame(game);
-    return { added: true };
+    const entryId = yield* library.addManualGame(game);
+    return { added: true, id: entryId };
   }).pipe(Effect.provide(makeAppLayer()));
   return runHttp(program);
 }

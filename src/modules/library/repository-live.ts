@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { Effect, Layer } from "effect";
 
 import { DatabaseUrl } from "~/infrastructure/config";
@@ -13,6 +13,7 @@ import {
 } from "~/infrastructure/database/schema";
 import type { CatalogGame } from "~/modules/catalog/model";
 import type { LibraryFilters, LibraryGame } from "~/modules/library/model";
+import { filterLibraryGames } from "~/modules/library/query";
 import {
   DatabaseUnavailable,
   LibraryEntryNotFound,
@@ -82,40 +83,42 @@ const syncGameMetadata = async (
   }
 };
 
-const upsertCatalogGame = (db: Database, game: CatalogGame) =>
-  db.transaction(async (transaction) => {
-    const rawgId = Number(game.id);
-    const [stored] = await transaction
-      .insert(games)
-      .values({
-        rawgId: Number.isFinite(rawgId) ? rawgId : null,
+const upsertCatalogGame = async (
+  transaction: DatabaseTransaction,
+  game: CatalogGame,
+) => {
+  const rawgId = Number(game.id);
+  const [stored] = await transaction
+    .insert(games)
+    .values({
+      rawgId: Number.isFinite(rawgId) ? rawgId : null,
+      title: game.title,
+      slug: game.slug,
+      coverUrl: game.coverUrl,
+      releaseDate: game.releaseDate,
+    })
+    .onConflictDoUpdate({
+      target: games.slug,
+      set: {
+        ...(Number.isFinite(rawgId) ? { rawgId } : {}),
         title: game.title,
-        slug: game.slug,
         coverUrl: game.coverUrl,
         releaseDate: game.releaseDate,
-      })
-      .onConflictDoUpdate({
-        target: games.slug,
-        set: {
-          ...(Number.isFinite(rawgId) ? { rawgId } : {}),
-          title: game.title,
-          coverUrl: game.coverUrl,
-          releaseDate: game.releaseDate,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({ id: games.id });
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: games.id });
 
-    if (!stored) throw new Error("Game upsert returned no row");
-    await syncGameMetadata(transaction, stored.id, game);
-    return stored.id;
-  });
+  if (!stored) throw new Error("Game upsert returned no row");
+  await syncGameMetadata(transaction, stored.id, game);
+  return stored.id;
+};
 
-const loadLibraryGame = async (
+const loadLibraryGames = async (
   db: Database,
-  gameId: string,
-): Promise<LibraryGame | null> => {
-  const [row] = await db
+  gameId?: string,
+): Promise<Array<LibraryGame>> => {
+  const rows = await db
     .select({
       id: games.id,
       rawgId: games.rawgId,
@@ -130,104 +133,123 @@ const loadLibraryGame = async (
     })
     .from(libraryEntries)
     .innerJoin(games, eq(libraryEntries.gameId, games.id))
-    .where(eq(games.id, gameId));
+    .where(gameId ? eq(games.id, gameId) : undefined);
 
-  if (!row) return null;
+  if (rows.length === 0) return [];
+  const gameIds = rows.map(({ id }) => id);
 
-  const genreRows = await db
-    .select({ name: genres.name })
-    .from(gameGenres)
-    .innerJoin(genres, eq(gameGenres.genreId, genres.id))
-    .where(eq(gameGenres.gameId, gameId));
-  const companyRows = await db
-    .select({ name: companies.name, role: gameCompanies.role })
-    .from(gameCompanies)
-    .innerJoin(companies, eq(gameCompanies.companyId, companies.id))
-    .where(eq(gameCompanies.gameId, gameId));
+  const [genreRows, companyRows] = await Promise.all([
+    db
+      .select({ gameId: gameGenres.gameId, name: genres.name })
+      .from(gameGenres)
+      .innerJoin(genres, eq(gameGenres.genreId, genres.id))
+      .where(inArray(gameGenres.gameId, gameIds)),
+    db
+      .select({
+        gameId: gameCompanies.gameId,
+        name: companies.name,
+        role: gameCompanies.role,
+      })
+      .from(gameCompanies)
+      .innerJoin(companies, eq(gameCompanies.companyId, companies.id))
+      .where(inArray(gameCompanies.gameId, gameIds)),
+  ]);
 
-  return {
+  const genresByGame = new Map<string, Array<string>>();
+  for (const { gameId: id, name } of genreRows) {
+    const names = genresByGame.get(id) ?? [];
+    names.push(name);
+    genresByGame.set(id, names);
+  }
+  const companiesByGame = new Map<
+    string,
+    { developers: Array<string>; publishers: Array<string> }
+  >();
+  for (const { gameId: id, name, role } of companyRows) {
+    const names = companiesByGame.get(id) ?? { developers: [], publishers: [] };
+    names[role === "developer" ? "developers" : "publishers"].push(name);
+    companiesByGame.set(id, names);
+  }
+
+  return rows.map((row) => ({
     ...row,
     updatedAt: row.updatedAt.toISOString(),
-    genres: genreRows.map(({ name }) => name),
-    developers: companyRows
-      .filter(({ role }) => role === "developer")
-      .map(({ name }) => name),
-    publishers: companyRows
-      .filter(({ role }) => role === "publisher")
-      .map(({ name }) => name),
-  };
+    genres: genresByGame.get(row.id) ?? [],
+    developers: companiesByGame.get(row.id)?.developers ?? [],
+    publishers: companiesByGame.get(row.id)?.publishers ?? [],
+  }));
 };
 
 export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
-  refreshCatalogGames: (catalogGames) =>
-    databaseEffect("refreshCatalogGames", async (db) => {
-      for (const game of catalogGames) await upsertCatalogGame(db, game);
-    }),
-  containsCatalogGame: (catalogGameId) =>
-    databaseEffect("containsCatalogGame", async (db) => {
-      const rawgId = Number(catalogGameId);
-      const result = await db
-        .select({ id: games.id })
-        .from(libraryEntries)
-        .innerJoin(games, eq(libraryEntries.gameId, games.id))
-        .where(eq(games.rawgId, rawgId))
-        .limit(1);
-      return result.length > 0;
-    }),
   list: (filters: LibraryFilters = {}) =>
     databaseEffect("listLibrary", async (db) => {
-      const conditions = [
-        filters.query ? ilike(games.title, `%${filters.query}%`) : undefined,
-        filters.status ? eq(libraryEntries.status, filters.status) : undefined,
-        filters.minimumRating
-          ? gte(libraryEntries.rating, filters.minimumRating)
-          : undefined,
-      ].filter((condition) => condition !== undefined);
-      const order =
-        filters.sort === "title"
-          ? asc(games.title)
-          : filters.sort === "rating"
-            ? desc(libraryEntries.rating)
-            : filters.sort === "releaseDate"
-              ? desc(games.releaseDate)
-              : desc(libraryEntries.updatedAt);
-      const rows = await db
-        .select({ id: games.id })
-        .from(libraryEntries)
-        .innerJoin(games, eq(libraryEntries.gameId, games.id))
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(order);
-      const loaded = await Promise.all(
-        rows.map(({ id }) => loadLibraryGame(db, id)),
-      );
-      return loaded.filter((game): game is LibraryGame => {
-        if (!game) return false;
-        if (filters.genre && !game.genres.includes(filters.genre)) return false;
-        if (filters.developer && !game.developers.includes(filters.developer))
-          return false;
-        if (filters.publisher && !game.publishers.includes(filters.publisher))
-          return false;
-        return true;
-      });
+      const games = await loadLibraryGames(db);
+      return filterLibraryGames(games, filters);
     }),
   findById: (gameId) =>
     databaseEffect("findLibraryEntry", (db) =>
-      loadLibraryGame(db, gameId),
+      loadLibraryGames(db, gameId),
     ).pipe(
-      Effect.flatMap((game) =>
+      Effect.flatMap(([game]) =>
         game
           ? Effect.succeed(game)
           : Effect.fail(new LibraryEntryNotFound({ gameId })),
       ),
     ),
   addManualGame: (game) =>
-    databaseEffect("addManualGame", async (db) => {
-      const gameId = await upsertCatalogGame(db, game);
-      await db
-        .insert(libraryEntries)
-        .values({ gameId, status: "backlog" })
-        .onConflictDoNothing();
-    }),
+    databaseEffect("addManualGame", (db) =>
+      db.transaction(async (transaction) => {
+        const rawgId = Number(game.id);
+        const [existing] = await transaction
+          .select({ id: games.id })
+          .from(libraryEntries)
+          .innerJoin(games, eq(libraryEntries.gameId, games.id))
+          .where(
+            Number.isFinite(rawgId)
+              ? eq(games.rawgId, rawgId)
+              : eq(games.slug, game.slug),
+          )
+          .limit(1);
+        if (existing) return existing.id;
+
+        const gameId = await upsertCatalogGame(transaction, game);
+        await transaction
+          .insert(libraryEntries)
+          .values({ gameId, status: "backlog" })
+          .onConflictDoNothing();
+        return gameId;
+      }),
+    ),
+  refreshCatalogGame: (gameId, game) =>
+    databaseEffect("refreshCatalogGame", (db) =>
+      db.transaction(async (transaction) => {
+        const [entry] = await transaction
+          .select({ gameId: libraryEntries.gameId })
+          .from(libraryEntries)
+          .where(eq(libraryEntries.gameId, gameId))
+          .limit(1);
+        if (!entry) return false;
+
+        await transaction
+          .update(games)
+          .set({
+            title: game.title,
+            slug: game.slug,
+            coverUrl: game.coverUrl,
+            releaseDate: game.releaseDate,
+            updatedAt: new Date(),
+          })
+          .where(eq(games.id, gameId));
+        await syncGameMetadata(transaction, gameId, game);
+        return true;
+      }),
+    ).pipe(
+      Effect.flatMap((refreshed) =>
+        refreshed
+          ? Effect.void
+          : Effect.fail(new LibraryEntryNotFound({ gameId })),
+      ),
+    ),
   update: (gameId, update) =>
     databaseEffect("updateLibraryEntry", (db) =>
       db

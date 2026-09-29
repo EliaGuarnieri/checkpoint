@@ -10,6 +10,7 @@ export const AddCatalogGameInput = Schema.Struct({
   id: Schema.String.pipe(Schema.pattern(/^\d+$/)),
 });
 export const LibraryEntryUpdateInput = LibraryEntryUpdate;
+export const LibraryEntryIdInput = Schema.UUID;
 
 export const LibraryFiltersInput = Schema.Struct({
   query: Schema.optional(Schema.String),

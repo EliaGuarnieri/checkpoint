@@ -8,13 +8,8 @@ import type {
 } from "~/modules/library/model";
 
 export type LibraryOperation =
-  | "refreshCatalogGames"
-  | "containsCatalogGame"
-  | "list"
-  | "findById"
   | "addManualGame"
-  | "update"
-  | "remove"
+  | "refreshCatalogGame"
   | "listLibrary"
   | "findLibraryEntry"
   | "updateLibraryEntry"
@@ -33,19 +28,13 @@ export class LibraryEntryNotFound extends Data.TaggedError(
   readonly gameId: string;
 }> {}
 
+export class LibraryCatalogIdMissing extends Data.TaggedError(
+  "LibraryCatalogIdMissing",
+)<{
+  readonly gameId: string;
+}> {}
+
 export interface LibraryRepositoryService {
-  /**
-   * Update local snapshots of catalog games in the library.
-   */
-  readonly refreshCatalogGames: (
-    games: ReadonlyArray<CatalogGame>,
-  ) => Effect.Effect<void, DatabaseUnavailable>;
-  /**
-   * Checks if the library contains a catalog game with the specified ID.
-   */
-  readonly containsCatalogGame: (
-    catalogGameId: string,
-  ) => Effect.Effect<boolean, DatabaseUnavailable>;
   /**
    * Lists all the games in the library.
    */
@@ -63,7 +52,12 @@ export interface LibraryRepositoryService {
    */
   readonly addManualGame: (
     game: CatalogGame,
-  ) => Effect.Effect<void, DatabaseUnavailable>;
+  ) => Effect.Effect<string, DatabaseUnavailable>;
+  /** Refresh a stored game snapshot without changing its personal entry. */
+  readonly refreshCatalogGame: (
+    gameId: string,
+    game: CatalogGame,
+  ) => Effect.Effect<void, DatabaseUnavailable | LibraryEntryNotFound>;
   /**
    * Updates an existing game in the library with the provided update data.
    */

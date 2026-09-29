@@ -1,7 +1,8 @@
 import { Effect, Layer } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
-import type { LibraryFilters, LibraryGame } from "~/modules/library/model";
+import type { LibraryGame } from "~/modules/library/model";
+import { filterLibraryGames } from "~/modules/library/query";
 import {
   LibraryEntryNotFound,
   LibraryRepository,
@@ -102,80 +103,14 @@ const catalogToLibraryGame = (game: CatalogGame): LibraryGame => ({
   updatedAt: new Date().toISOString(),
 });
 
-const updateEntry = (
-  game: CatalogGame,
-  libraryGame: LibraryGame,
-): LibraryGame => {
-  return {
-    ...libraryGame,
-    title: game.title,
-    slug: game.slug,
-    coverUrl: game.coverUrl,
-    releaseDate: game.releaseDate,
-    genres: game.genres,
-    developers: game.developers,
-    publishers: game.publishers,
-  };
-};
-
 export const LibraryRepositoryMemory = Layer.effect(
   LibraryRepository,
   Effect.gen(function* () {
     let entries = yield* makeEntries;
 
-    const filterEntries = (filters: LibraryFilters) => {
-      const filtered = entries.filter((game) => {
-        if (
-          filters.query &&
-          !game.title.toLowerCase().includes(filters.query.toLowerCase())
-        )
-          return false;
-        if (filters.status && game.status !== filters.status) return false;
-        if (filters.genre && !game.genres.includes(filters.genre)) return false;
-        if (filters.developer && !game.developers.includes(filters.developer))
-          return false;
-        if (filters.publisher && !game.publishers.includes(filters.publisher))
-          return false;
-        if (filters.minimumRating && (game.rating ?? 0) < filters.minimumRating)
-          return false;
-        return true;
-      });
-      return filtered.toSorted((left, right) => {
-        if (filters.sort === "title")
-          return left.title.localeCompare(right.title);
-        if (filters.sort === "rating")
-          return (right.rating ?? -1) - (left.rating ?? -1);
-        if (filters.sort === "releaseDate")
-          return (right.releaseDate ?? "").localeCompare(
-            left.releaseDate ?? "",
-          );
-        return right.updatedAt.localeCompare(left.updatedAt);
-      });
-    };
-
     return {
-      refreshCatalogGames: (catalogGames) =>
-        Effect.sync(() => {
-          catalogGames.forEach((game) => {
-            const entryIndex = entries.findIndex(
-              ({ rawgId }) => String(rawgId) === game.id,
-            );
-            if (entryIndex < 0) return;
-
-            const existingEntry = entries[entryIndex];
-            const updatedEntry = updateEntry(game, existingEntry);
-            entries = [
-              ...entries.slice(0, entryIndex),
-              updatedEntry,
-              ...entries.slice(entryIndex + 1),
-            ];
-          });
-        }),
-      containsCatalogGame: (catalogGameId) =>
-        Effect.succeed(
-          entries.some((game) => String(game.rawgId) === catalogGameId),
-        ),
-      list: (filters = {}) => Effect.succeed(filterEntries(filters)),
+      list: (filters = {}) =>
+        Effect.sync(() => filterLibraryGames(entries, filters)),
       findById: (gameId) => {
         const game = entries.find(({ id }) => id === gameId);
         return game
@@ -184,8 +119,34 @@ export const LibraryRepositoryMemory = Layer.effect(
       },
       addManualGame: (game) =>
         Effect.sync(() => {
-          if (!entries.some(({ rawgId }) => String(rawgId) === game.id))
-            entries = [catalogToLibraryGame(game), ...entries];
+          const existing = entries.find(({ rawgId, slug }) =>
+            rawgId === null ? slug === game.slug : String(rawgId) === game.id,
+          );
+          if (existing) return existing.id;
+          const entry = catalogToLibraryGame(game);
+          entries = [entry, ...entries];
+          return entry.id;
+        }),
+      refreshCatalogGame: (gameId, game) =>
+        Effect.suspend(() => {
+          const existing = entries.find(({ id }) => id === gameId);
+          if (!existing)
+            return Effect.fail(new LibraryEntryNotFound({ gameId }));
+          entries = entries.map((entry) =>
+            entry.id === gameId
+              ? {
+                  ...entry,
+                  title: game.title,
+                  slug: game.slug,
+                  coverUrl: game.coverUrl,
+                  releaseDate: game.releaseDate,
+                  genres: game.genres,
+                  developers: game.developers,
+                  publishers: game.publishers,
+                }
+              : entry,
+          );
+          return Effect.void;
         }),
       update: (gameId, update) => {
         const index = entries.findIndex(({ id }) => id === gameId);

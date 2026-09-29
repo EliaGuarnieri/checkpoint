@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Schema } from "effect";
-import { ArrowLeftIcon, SaveIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  RefreshCwIcon,
+  SaveIcon,
+  Trash2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -114,6 +119,16 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["library"] });
       router.push("/library");
+    },
+  });
+  const refresh = useMutation({
+    mutationFn: () =>
+      fetchJson(LibraryGameSchema, `/api/library/${game.id}/refresh`, {
+        method: "POST",
+      }),
+    onSuccess: async (refreshed) => {
+      queryClient.setQueryData(["library-game", game.id], refreshed);
+      await queryClient.invalidateQueries({ queryKey: ["library"] });
     },
   });
 
@@ -350,6 +365,27 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             </a>
             . Stato, voto e nota sono tuoi.
           </p>
+          {game.rawgId !== null && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-6"
+              disabled={refresh.isPending}
+              onClick={() => refresh.mutate()}
+            >
+              {refresh.isPending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <RefreshCwIcon data-icon="inline-start" />
+              )}
+              Aggiorna dati del gioco
+            </Button>
+          )}
+          {refresh.isError && (
+            <p className="mt-2 text-sm text-destructive">
+              Aggiornamento non riuscito. Riprova tra poco.
+            </p>
+          )}
           <Button
             variant="ghost"
             size="sm"

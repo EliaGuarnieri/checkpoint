@@ -1,6 +1,9 @@
 import { Effect, Schema } from "effect";
 
-import { LibraryEntryUpdateInput } from "~/infrastructure/api-schema";
+import {
+  LibraryEntryIdInput,
+  LibraryEntryUpdateInput,
+} from "~/infrastructure/api-schema";
 import { makeAppLayer } from "~/infrastructure/app-layer";
 import { runHttp } from "~/infrastructure/http";
 import { jsonBody } from "~/infrastructure/request";
@@ -11,9 +14,10 @@ type LibraryRouteContext = {
 };
 
 export async function GET(_request: Request, context: LibraryRouteContext) {
-  const { id } = await context.params;
+  const { id: inputId } = await context.params;
   return runHttp(
     Effect.gen(function* () {
+      const id = yield* Schema.decodeUnknown(LibraryEntryIdInput)(inputId);
       const library = yield* LibraryRepository;
       return yield* library.findById(id);
     }).pipe(Effect.provide(makeAppLayer())),
@@ -21,8 +25,9 @@ export async function GET(_request: Request, context: LibraryRouteContext) {
 }
 
 export async function PATCH(request: Request, context: LibraryRouteContext) {
-  const { id } = await context.params;
+  const { id: inputId } = await context.params;
   const program = Effect.gen(function* () {
+    const id = yield* Schema.decodeUnknown(LibraryEntryIdInput)(inputId);
     const update = yield* Schema.decodeUnknown(LibraryEntryUpdateInput)(
       yield* jsonBody(request),
     );
@@ -34,9 +39,10 @@ export async function PATCH(request: Request, context: LibraryRouteContext) {
 }
 
 export async function DELETE(_request: Request, context: LibraryRouteContext) {
-  const { id } = await context.params;
+  const { id: inputId } = await context.params;
   return runHttp(
     Effect.gen(function* () {
+      const id = yield* Schema.decodeUnknown(LibraryEntryIdInput)(inputId);
       const library = yield* LibraryRepository;
       yield* library.remove(id);
       return { removed: true };

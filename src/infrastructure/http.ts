@@ -14,9 +14,11 @@ export const runHttp = async <A, E>(effect: Effect.Effect<A, E, never>) => {
     const status =
       tag === "LibraryEntryNotFound"
         ? 404
-        : tag === "ParseError" || tag === "InvalidJsonBody"
-          ? 400
-          : 503;
+        : tag === "LibraryCatalogIdMissing"
+          ? 422
+          : tag === "ParseError" || tag === "InvalidJsonBody"
+            ? 400
+            : 503;
     return Response.json({ error: tag }, { status });
   }
   return Response.json({ error: "UnexpectedError" }, { status: 500 });

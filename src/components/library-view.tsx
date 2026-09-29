@@ -29,9 +29,9 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { fetchJson } from "~/lib/api";
 import {
   LibraryGameSchema,
-  type LibraryGame,
   type TrackingStatus,
 } from "~/modules/library/model";
+import { filterLibraryGames } from "~/modules/library/query";
 
 const LibraryResponse = Schema.Array(LibraryGameSchema);
 const statuses: ReadonlyArray<{
@@ -58,52 +58,6 @@ const sortLabels: Record<Sort, string> = {
   releaseDate: "Uscita più recente",
 };
 
-function filterGames(
-  games: ReadonlyArray<LibraryGame>,
-  filters: {
-    query: string;
-    status: TrackingStatus | "all";
-    genre: string;
-    developer: string;
-    publisher: string;
-    minimumRating: string;
-    sort: Sort;
-  },
-) {
-  const includes = (value: string, term: string) =>
-    value.toLocaleLowerCase("it").includes(term.toLocaleLowerCase("it"));
-  return games
-    .filter(
-      (game) =>
-        (!filters.query || includes(game.title, filters.query)) &&
-        (filters.status === "all" || game.status === filters.status) &&
-        (!filters.genre ||
-          game.genres.some((value) => includes(value, filters.genre))) &&
-        (!filters.developer ||
-          game.developers.some((value) =>
-            includes(value, filters.developer),
-          )) &&
-        (!filters.publisher ||
-          game.publishers.some((value) =>
-            includes(value, filters.publisher),
-          )) &&
-        (!filters.minimumRating ||
-          (game.rating != null &&
-            game.rating >= Number(filters.minimumRating))),
-    )
-    .sort((a, b) => {
-      if (filters.sort === "title") return a.title.localeCompare(b.title, "it");
-      if (filters.sort === "rating")
-        return (
-          (b.rating ?? -1) - (a.rating ?? -1) ||
-          a.title.localeCompare(b.title, "it")
-        );
-      if (filters.sort === "releaseDate")
-        return (b.releaseDate ?? "").localeCompare(a.releaseDate ?? "");
-      return b.updatedAt.localeCompare(a.updatedAt);
-    });
-}
-
 export function LibraryView() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<TrackingStatus | "all">("all");
@@ -118,13 +72,13 @@ export function LibraryView() {
   });
   const games = useMemo(
     () =>
-      filterGames(library.data ?? [], {
+      filterLibraryGames(library.data ?? [], {
         query,
-        status,
+        status: status === "all" ? undefined : status,
         genre,
         developer,
         publisher,
-        minimumRating,
+        minimumRating: Number(minimumRating),
         sort,
       }),
     [
