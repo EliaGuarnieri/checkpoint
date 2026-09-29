@@ -1,3 +1,5 @@
+import { Schema } from "effect";
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -25,4 +27,3 @@ export async function fetchJson<A, I>(
   const body: unknown = await response.json();
   return Schema.decodeUnknownPromise(schema)(body);
 }
-import { Schema } from "effect";
