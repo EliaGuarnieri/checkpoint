@@ -32,6 +32,21 @@ pnpm check      # lint + typecheck + test
 pnpm build
 ```
 
+## Database Supabase
+
+L'app usa Drizzle attraverso il `LibraryRepository` di Effect anche con Supabase. Per eseguirla su Vercel o su un altro runtime serverless:
+
+1. Nel progetto Supabase, apri **Connect** e copia l'URI del **Transaction pooler** (porta `6543`). Sostituisci il segnaposto della password e codifica i caratteri speciali della password nell'URI.
+2. Imposta l'URI come `DATABASE_URL` tra le variabili **server** dell'hosting. Non usare il prefisso `NEXT_PUBLIC_`: la connessione al database avviene solo nei Route Handler.
+3. Crea `.env.supabase.local` nel repository con `DATABASE_URL` uguale all'URI del Transaction pooler e `DATABASE_MIGRATION_URL` uguale all'URI della **Direct connection**. Il file è ignorato da Git e non cambia il database usato da `pnpm dev`. Se la rete locale non supporta IPv6, usa l'URI del **Session pooler** (porta `5432`) per `DATABASE_MIGRATION_URL`.
+4. Prima di avviare l'app ospitata, esegui `pnpm db:migrate:supabase` e poi `pnpm db:check:supabase`. Il primo comando applica le migration con TLS; il secondo legge la libreria tramite il `LibraryRepository` live. Non eseguire `pnpm db:seed` sul database remoto se vuoi iniziare senza i dati demo.
+
+Il client limita a una connessione per istanza quando l'host è Supabase e richiede TLS. Il driver `pg` permette di usare il pooler transaction senza il pipelining di Postgres.js. La migration `0002_enable_rls` abilita RLS senza policy sulle sei tabelle dell'app: i ruoli `anon` e `authenticated` non possono leggere o modificare le voci personali, mentre la connessione PostgreSQL del server continua a funzionare. [Connessioni Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Sicurezza della Data API](https://supabase.com/docs/guides/api/securing-your-api).
+
+Lo sviluppo locale continua a usare `DATABASE_URL` in `.env` e PostgreSQL in Docker. `pnpm setup` forza il database locale anche se hai una variabile di migrazione remota nell'ambiente. I test unitari usano il repository in memoria e partono con `pnpm test`; `pnpm test:db` avvia un PostgreSQL di test separato sulla porta `5433`, applica le migration e verifica il repository live. Nessuno dei due comandi di test usa Supabase.
+
+Poiché l'app usa soltanto Drizzle, puoi disattivare la **Data API** nelle impostazioni API di Supabase. Il prototipo non ha autenticazione: se pubblichi l'app senza limitare l'accesso, chiunque raggiunga i suoi endpoint può modificare l'unica libreria personale. [Drizzle e Data API](https://supabase.com/docs/guides/database/drizzle).
+
 ## Catalogo RAWG
 
 La demo usa `CATALOG_PROVIDER=fake`. Per cercare nel catalogo live, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e imposta queste variabili in `.env`:

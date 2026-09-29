@@ -6,7 +6,8 @@ if [[ ! -f .env ]]; then
 fi
 
 docker compose up -d --wait postgres
-pnpm db:migrate
-pnpm db:seed
+local_database_url="postgres://checkpoint:checkpoint@localhost:5432/checkpoint"
+DATABASE_URL="$local_database_url" DATABASE_MIGRATION_URL="$local_database_url" pnpm db:migrate
+DATABASE_URL="$local_database_url" pnpm db:seed
 
 echo "Checkpoint is ready. Run: pnpm dev"

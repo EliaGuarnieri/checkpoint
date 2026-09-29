@@ -2,9 +2,6 @@
   "name": "checkpoint",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": "22.x"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,12 +10,15 @@
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "bash scripts/test-db.sh",
     "test:watch": "vitest",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:supabase": "node --import tsx scripts/supabase-db.ts migrate",
+    "db:check:supabase": "node --import tsx scripts/supabase-db.ts check",
     "db:seed": "tsx scripts/seed.ts",
     "setup": "bash scripts/setup.sh",
     "prepare": "effect-tsgo patch --typescript --oxlint"
@@ -33,7 +33,7 @@
     "lucide-react": "^1.47.0",
     "next": "16.3.5",
     "next-themes": "^0.4.6",
-    "postgres": "3.4.9",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "shadcn": "^4.21.0",
@@ -41,8 +41,10 @@
   },
   "devDependencies": {
     "@effect/tsgo": "0.45.0",
+    "@next/env": "16.3.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "0.31.11",
@@ -53,6 +55,9 @@
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "^5"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "packageManager": "pnpm@11.19.0"
 }
