@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { LibraryView } from "~/components/library-view";
 
 export default function HomePage() {
-  redirect("/library");
+  return <LibraryView />;
 }

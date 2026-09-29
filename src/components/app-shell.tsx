@@ -12,7 +12,7 @@ export function AppShell({ children }: { readonly children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-background">
         <div className="mx-auto grid w-full max-w-362.5 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-4 py-3 sm:px-6 lg:grid-cols-[auto_minmax(20rem,1fr)_auto] lg:gap-8 lg:px-10">
           <Link
-            href="/library"
+            href="/"
             className="inline-flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Checkpoint, vai alla libreria"
           >

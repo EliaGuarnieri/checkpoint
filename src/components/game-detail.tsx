@@ -118,7 +118,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["library"] });
-      router.push("/library");
+      router.push("/");
     },
   });
   const refresh = useMutation({
@@ -135,7 +135,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   return (
     <article className="space-y-8">
       <Link
-        href="/library"
+        href="/"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeftIcon size={17} aria-hidden="true" /> Torna alla libreria
