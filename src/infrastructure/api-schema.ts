@@ -1,13 +1,14 @@
 import { Schema } from "effect";
 
-import { CatalogGameSchema } from "~/modules/catalog/model";
 import { LibraryEntryUpdate, TrackingStatus } from "~/modules/library/model";
 
 export const CatalogSearchInput = Schema.Struct({
   query: Schema.String.pipe(Schema.trimmed(), Schema.minLength(2)),
 });
 
-export const ManualGameInput = CatalogGameSchema;
+export const AddCatalogGameInput = Schema.Struct({
+  id: Schema.String.pipe(Schema.pattern(/^\d+$/)),
+});
 export const LibraryEntryUpdateInput = LibraryEntryUpdate;
 
 export const LibraryFiltersInput = Schema.Struct({

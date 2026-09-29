@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 
-import type { CatalogGame } from "~/modules/catalog/model";
+import type { CatalogGame, CatalogGamePreview } from "~/modules/catalog/model";
 import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
 
 const catalogGames: ReadonlyArray<CatalogGame> = [
@@ -36,6 +36,15 @@ const catalogGames: ReadonlyArray<CatalogGame> = [
   },
 ];
 
+const toPreview = (game: CatalogGame): CatalogGamePreview => ({
+  id: game.id,
+  title: game.title,
+  slug: game.slug,
+  coverUrl: game.coverUrl,
+  releaseDate: game.releaseDate,
+  genres: game.genres,
+});
+
 export const GameCatalogFake = Layer.succeed(GameCatalog, {
   findById: (id) => {
     const game = catalogGames.find((item) => item.id === id);
@@ -45,10 +54,12 @@ export const GameCatalogFake = Layer.succeed(GameCatalog, {
   },
   searchByTitle: (title) =>
     Effect.succeed(
-      catalogGames.filter((game) =>
-        game.title
-          .toLocaleLowerCase("en")
-          .includes(title.toLocaleLowerCase("en")),
-      ),
+      catalogGames
+        .filter((game) =>
+          game.title
+            .toLocaleLowerCase("en")
+            .includes(title.toLocaleLowerCase("en")),
+        )
+        .map(toPreview),
     ),
 });

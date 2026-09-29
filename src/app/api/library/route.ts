@@ -2,11 +2,12 @@ import { Effect, Schema } from "effect";
 
 import {
   LibraryFiltersInput,
-  ManualGameInput,
+  AddCatalogGameInput,
 } from "~/infrastructure/api-schema";
 import { makeAppLayer } from "~/infrastructure/app-layer";
 import { runHttp } from "~/infrastructure/http";
 import { jsonBody } from "~/infrastructure/request";
+import { GameCatalog } from "~/modules/catalog/service";
 import { LibraryRepository } from "~/modules/library/service";
 
 export async function GET(request: Request) {
@@ -29,9 +30,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const program = Effect.gen(function* () {
-    const game = yield* Schema.decodeUnknown(ManualGameInput)(
+    const { id } = yield* Schema.decodeUnknown(AddCatalogGameInput)(
       yield* jsonBody(request),
     );
+    const catalog = yield* GameCatalog;
+    const game = yield* catalog.findById(id);
     const library = yield* LibraryRepository;
     yield* library.addManualGame(game);
     return { added: true };

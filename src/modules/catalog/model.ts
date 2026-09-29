@@ -1,12 +1,18 @@
 import { Schema } from "effect";
 
-export const CatalogGameSchema = Schema.Struct({
+export const CatalogGamePreviewSchema = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
   slug: Schema.String,
   coverUrl: Schema.NullOr(Schema.String),
   releaseDate: Schema.NullOr(Schema.String),
   genres: Schema.Array(Schema.String),
+});
+
+export type CatalogGamePreview = typeof CatalogGamePreviewSchema.Type;
+
+export const CatalogGameSchema = Schema.Struct({
+  ...CatalogGamePreviewSchema.fields,
   developers: Schema.Array(Schema.String),
   publishers: Schema.Array(Schema.String),
 });

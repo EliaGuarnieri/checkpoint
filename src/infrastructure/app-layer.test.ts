@@ -44,11 +44,13 @@ describe("configured game catalog", () => {
         released: null,
         genres: [],
       };
-      return Response.json(
-        url.pathname.endsWith("/games")
-          ? { results: [game] }
-          : { ...game, developers: [], publishers: [] },
-      );
+      expect(url.pathname).toBe("/api/games");
+      return Response.json({
+        results: Array.from({ length: 6 }, (_, index) => ({
+          ...game,
+          id: index + 1,
+        })),
+      });
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -56,8 +58,10 @@ describe("configured game catalog", () => {
       searchWithConfig([["RAWG_API_KEY", "test-key"]]),
     );
 
-    expect(games.map((game) => game.title)).toEqual(["Celeste from RAWG"]);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(games).toHaveLength(6);
+    expect(games[0]?.title).toBe("Celeste from RAWG");
+    expect(games[0]).not.toHaveProperty("developers");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("loads a single RAWG game with its cover", async () => {

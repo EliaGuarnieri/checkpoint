@@ -11,13 +11,13 @@ Checkpoint is a single-user videogame journal built as a technical exercise cent
 - View and edit a game on `/games/[id]`; browse on `/library`.
 - The product has no authentication, users, social features, playtime tracking, background jobs, or automatic synchronization.
 
-## Integrations and demo
+## Integrations and tests
 
 - Provide live and deterministic fake Effect layers for RAWG catalog search.
-- Demo mode is the default and requires no credentials or network.
+- The application uses the live RAWG layer and requires its API key. Tests can provide the deterministic fake layer without credentials or network.
 - Live credentials come only from environment variables and are never committed.
-- Persist a local snapshot of catalog metadata and refresh it when encountered by search or manual addition.
-- Display RAWG attribution on views that use live RAWG data, and `Demo catalog` in demo mode.
+- Persist a local snapshot with full catalog metadata when a game is added to the library. Search does not write snapshots; loading details for an existing library game may refresh its snapshot.
+- Display RAWG attribution in the application.
 
 ## Technical constraints
 
@@ -32,5 +32,5 @@ Checkpoint is a single-user videogame journal built as a technical exercise cent
 - `pnpm setup`, `pnpm dev`, `pnpm test`, and `pnpm check` are documented and functional.
 - Docker Compose starts PostgreSQL; migrations and deterministic seed data are included.
 - `pnpm check` runs lint, typecheck, and unit tests.
-- README explains the demo, setup, live catalog key, architecture, Effect usage, trade-offs, tests, and AI assistance.
+- README explains local development, setup, live catalog key, architecture, Effect usage, trade-offs, tests, and AI assistance.
 - README includes final screenshots of the library and game detail.

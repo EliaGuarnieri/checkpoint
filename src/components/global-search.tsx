@@ -15,11 +15,14 @@ import { GameCover } from "~/components/game-cover";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { fetchJson } from "~/lib/api";
-import { CatalogGameSchema, type CatalogGame } from "~/modules/catalog/model";
+import {
+  CatalogGamePreviewSchema,
+  type CatalogGamePreview,
+} from "~/modules/catalog/model";
 import { LibraryGameSchema } from "~/modules/library/model";
 
 const LibraryResponse = Schema.Array(LibraryGameSchema);
-const CatalogResponse = Schema.Array(CatalogGameSchema);
+const CatalogResponse = Schema.Array(CatalogGamePreviewSchema);
 const AddedResponse = Schema.Struct({ added: Schema.Literal(true) });
 
 export function GlobalSearch() {
@@ -80,11 +83,11 @@ export function GlobalSearch() {
     staleTime: 1000 * 60 * 5,
   });
   const add = useMutation({
-    mutationFn: async (game: CatalogGame) => {
+    mutationFn: async (game: CatalogGamePreview) => {
       await fetchJson(AddedResponse, "/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(game),
+        body: JSON.stringify({ id: game.id }),
       });
       const entries = await fetchJson(LibraryResponse, "/api/library");
       const entry = entries.find(
@@ -105,7 +108,7 @@ export function GlobalSearch() {
   const libraryMatches = (library.data ?? [])
     .filter((game) => game.title.toLocaleLowerCase("it").includes(normalized))
     .slice(0, 5);
-  const findOwned = (game: CatalogGame) =>
+  const findOwned = (game: CatalogGamePreview) =>
     (library.data ?? []).find(
       (entry) => entry.rawgId === Number(game.id) || entry.slug === game.slug,
     );
@@ -186,12 +189,12 @@ export function GlobalSearch() {
                     router.push(`/games/${game.id}`);
                   }}
                 >
-                  <span className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <span className="relative aspect-[3/2] w-24 shrink-0 overflow-hidden rounded-md bg-muted">
                     <GameCover
                       title={game.title}
                       coverUrl={game.coverUrl}
                       rawgId={game.rawgId}
-                      sizes="56px"
+                      sizes="128px"
                     />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
@@ -233,11 +236,11 @@ export function GlobalSearch() {
                       key={game.id}
                       className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent"
                     >
-                      <span className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <span className="relative aspect-[3/2] w-24 shrink-0 overflow-hidden rounded-md bg-muted">
                         <GameCover
                           title={game.title}
                           coverUrl={game.coverUrl}
-                          sizes="56px"
+                          sizes="128px"
                         />
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">

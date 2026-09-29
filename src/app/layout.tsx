@@ -39,7 +39,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
-          disableTransitionOnChange
           storageKey="checkpoint-theme"
         >
           <Providers>

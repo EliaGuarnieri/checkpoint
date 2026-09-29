@@ -1,6 +1,6 @@
 import { Effect, Layer, Redacted, Schedule, Schema } from "effect";
 
-import type { CatalogGame } from "~/modules/catalog/model";
+import type { CatalogGame, CatalogGamePreview } from "~/modules/catalog/model";
 import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
 
 const RawgNamedItem = Schema.Struct({ name: Schema.String });
@@ -45,13 +45,19 @@ const requestJson = <A, I>(url: string, schema: Schema.Schema<A, I>) =>
     }),
   );
 
-const toCatalogGame = (game: typeof RawgDetail.Type): CatalogGame => ({
+const toCatalogGamePreview = (
+  game: typeof RawgGame.Type,
+): CatalogGamePreview => ({
   id: String(game.id),
   title: game.name,
   slug: game.slug,
   coverUrl: game.background_image,
   releaseDate: game.released,
   genres: game.genres.map(({ name }) => name),
+});
+
+const toCatalogGame = (game: typeof RawgDetail.Type): CatalogGame => ({
+  ...toCatalogGamePreview(game),
   developers: game.developers.map(({ name }) => name),
   publishers: game.publishers.map(({ name }) => name),
 });
@@ -64,20 +70,8 @@ export const makeGameCatalogLive = (apiKey: Redacted.Redacted<string>) =>
         RawgDetail,
       ).pipe(Effect.map(toCatalogGame)),
     searchByTitle: (title) =>
-      Effect.gen(function* () {
-        const search = yield* requestJson(
-          `https://api.rawg.io/api/games?key=${encodeURIComponent(Redacted.value(apiKey))}&search=${encodeURIComponent(title)}&page_size=6`,
-          RawgSearchResponse,
-        );
-
-        return yield* Effect.forEach(
-          search.results,
-          (result) =>
-            requestJson(
-              `https://api.rawg.io/api/games/${result.id}?key=${encodeURIComponent(Redacted.value(apiKey))}`,
-              RawgDetail,
-            ).pipe(Effect.map(toCatalogGame)),
-          { concurrency: 6 },
-        );
-      }),
+      requestJson(
+        `https://api.rawg.io/api/games?key=${encodeURIComponent(Redacted.value(apiKey))}&search=${encodeURIComponent(title)}&page_size=6`,
+        RawgSearchResponse,
+      ).pipe(Effect.map(({ results }) => results.map(toCatalogGamePreview))),
   });

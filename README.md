@@ -67,6 +67,8 @@ RAWG_API_KEY=la-tua-chiave
 
 Non committare `.env`. Senza chiave, le richieste API restituiscono un errore di configurazione. Il catalogo fake è disponibile come `Layer` nei test. L'interfaccia mostra l'attribuzione RAWG.
 
+La ricerca usa una sola richiesta alla lista RAWG e restituisce fino a sei anteprime con titolo, copertina, data e generi. Quando scegli **Aggiungi**, il client invia l'ID: il server carica il dettaglio RAWG, inclusi sviluppatori ed editori, e salva lo snapshot nella libreria. Cercare non scrive nel database.
+
 ## Funzionalità
 
 - Una voce personale per gioco, con stato `backlog`, `playing`, `completed` o `abandoned`.
@@ -95,14 +97,14 @@ Il codice applicativo è organizzato in `src/modules`; gli adapter e la configur
 - `Layer` fornisce gli adapter live all'app e quelli fake o in memoria ai test.
 - `Schema` decodifica input HTTP, configurazione e risposte RAWG.
 - `Data.TaggedError` distingue errori del catalogo, del database e voci mancanti.
-- `Effect.forEach` limita a quattro le richieste di dettaglio RAWG concorrenti.
+- `Effect` separa la ricerca delle anteprime dal caricamento del dettaglio quando un gioco viene aggiunto.
 - `Schedule` ritenta le richieste RAWG fallite con un limite.
 
 TanStack Query gestisce query, mutation e invalidazione della cache nel browser. Effect gestisce i confini del server e le dipendenze dei programmi. Drizzle gestisce le query SQL; le interfacce dei repository restituiscono valori `Effect`.
 
 ## Decisioni
 
-Il prototipo è single-user: non ha autenticazione o tabella utenti. La ricerca aggiorna gli snapshot locali dei giochi, ma non crea voci personali. Solo l'azione esplicita "Aggiungi" crea una voce in libreria. Se la voce esiste già, l'aggiunta non modifica stato, voto o nota.
+Il prototipo è single-user: non ha autenticazione o tabella utenti. La ricerca non salva giochi locali né crea voci personali. Solo l'azione esplicita "Aggiungi" crea una voce in libreria con metadati completi. Se la voce esiste già, l'aggiunta non modifica stato, voto o nota.
 
 L'importazione Steam e il tracciamento delle fonti di possesso sono stati rimossi per concentrare il progetto sul diario e sui flussi Effect ancora utili. La [decisione di perimetro](docs/adr/0001-focus-on-personal-library.md) documenta anche la migration che elimina le vecchie associazioni senza cancellare le voci personali.
 
