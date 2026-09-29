@@ -58,10 +58,15 @@ const toCatalogGame = (game: typeof RawgDetail.Type): CatalogGame => ({
 
 export const makeGameCatalogLive = (apiKey: Redacted.Redacted<string>) =>
   Layer.succeed(GameCatalog, {
+    findById: (id) =>
+      requestJson(
+        `https://api.rawg.io/api/games/${encodeURIComponent(id)}?key=${encodeURIComponent(Redacted.value(apiKey))}`,
+        RawgDetail,
+      ).pipe(Effect.map(toCatalogGame)),
     searchByTitle: (title) =>
       Effect.gen(function* () {
         const search = yield* requestJson(
-          `https://api.rawg.io/api/games?key=${encodeURIComponent(Redacted.value(apiKey))}&search=${encodeURIComponent(title)}&page_size=10`,
+          `https://api.rawg.io/api/games?key=${encodeURIComponent(Redacted.value(apiKey))}&search=${encodeURIComponent(title)}&page_size=6`,
           RawgSearchResponse,
         );
 
@@ -72,7 +77,7 @@ export const makeGameCatalogLive = (apiKey: Redacted.Redacted<string>) =>
               `https://api.rawg.io/api/games/${result.id}?key=${encodeURIComponent(Redacted.value(apiKey))}`,
               RawgDetail,
             ).pipe(Effect.map(toCatalogGame)),
-          { concurrency: 4 },
+          { concurrency: 6 },
         );
       }),
   });

@@ -60,6 +60,41 @@ describe("configured game catalog", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("loads a single RAWG game with its cover", async () => {
+    const coverUrl = "https://media.rawg.io/media/games/example.jpg";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      expect(url.pathname).toBe("/api/games/3498");
+      expect(url.searchParams.get("key")).toBe("test-key");
+      return Response.json({
+        id: 3498,
+        name: "Hades",
+        slug: "hades",
+        background_image: coverUrl,
+        released: "2020-09-17",
+        genres: [],
+        developers: [],
+        publishers: [],
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const game = await Effect.runPromise(
+      Effect.gen(function* () {
+        const catalog = yield* GameCatalog;
+        return yield* catalog.findById("3498");
+      }).pipe(
+        Effect.provide(makeAppLayer()),
+        Effect.withConfigProvider(
+          ConfigProvider.fromMap(new Map([["RAWG_API_KEY", "test-key"]])),
+        ),
+      ),
+    );
+
+    expect(game.coverUrl).toBe(coverUrl);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects app configuration without a RAWG key", async () => {
     await expect(Effect.runPromise(searchWithConfig([]))).rejects.toThrow(
       "RAWG_API_KEY",

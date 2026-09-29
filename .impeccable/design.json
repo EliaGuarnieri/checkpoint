@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T18:15:56Z",
+  "title": "Design di Checkpoint",
+  "extensions": {
+    "colorMeta": {
+      "background-light": {
+        "role": "neutral",
+        "displayName": "Background Light"
+      },
+      "foreground-light": {
+        "role": "neutral",
+        "displayName": "Foreground Light"
+      },
+      "card-light": {
+        "role": "neutral",
+        "displayName": "Card Light"
+      },
+      "primary-light": {
+        "role": "primary",
+        "displayName": "Primary Light"
+      },
+      "primary-foreground-light": {
+        "role": "neutral",
+        "displayName": "Primary Foreground Light"
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "Muted Light"
+      },
+      "muted-foreground-light": {
+        "role": "neutral",
+        "displayName": "Muted Foreground Light"
+      },
+      "border-light": {
+        "role": "neutral",
+        "displayName": "Border Light"
+      },
+      "background-dark": {
+        "role": "neutral",
+        "displayName": "Background Dark"
+      },
+      "foreground-dark": {
+        "role": "neutral",
+        "displayName": "Foreground Dark"
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Card Dark"
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Primary Dark"
+      },
+      "muted-dark": {
+        "role": "neutral",
+        "displayName": "Muted Dark"
+      },
+      "muted-foreground-dark": {
+        "role": "neutral",
+        "displayName": "Muted Foreground Dark"
+      },
+      "border-dark": {
+        "role": "neutral",
+        "displayName": "Border Dark"
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Geist Body",
+        "purpose": "Body, controls, and metadata."
+      },
+      "heading": {
+        "displayName": "Geist Heading",
+        "purpose": "Page, section, and game titles."
+      },
+      "mono": {
+        "displayName": "Geist Mono",
+        "purpose": "Keyboard shortcuts and monospace data."
+      }
+    },
+    "shadows": {},
+    "motion": {},
+    "breakpoints": {}
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Use the existing shadcn Button with the primary theme token.",
+      "html": "<Button>Aggiungi un gioco</Button>",
+      "css": "Tailwind/shadcn: bg-primary text-primary-foreground"
+    },
+    {
+      "name": "Library Card",
+      "kind": "card",
+      "refersTo": "library-card",
+      "description": "Cover-first game card composed with Tailwind utilities and theme tokens.",
+      "html": "<Link className=\"bg-card text-card-foreground border-border\">...</Link>",
+      "css": "Tailwind utilities in src/components/library-view.tsx"
+    },
+    {
+      "name": "Global Search",
+      "kind": "input",
+      "description": "Header search for local library and RAWG catalog results.",
+      "html": "<Input aria-label=\"Cerca un gioco nella libreria e nel catalogo RAWG\" />",
+      "css": "Existing shadcn Input with Tailwind layout utilities"
+    }
+  ],
+  "narrative": {
+    "northStar": "Archivio curato nel tema originale di Checkpoint",
+    "overview": "Covers lead the library and game detail. The original shadcn light/dark semantic palette and Geist typography provide the interface structure. Page layout and responsive behavior use Tailwind utilities in components.",
+    "keyCharacteristics": [
+      "Cover-first gallery and game detail.",
+      "Original magenta primary accent and semantic light/dark tokens.",
+      "Geist for headings and body; Geist Mono only where appropriate.",
+      "Global search combines library entries and RAWG results."
+    ],
+    "rules": [
+      {
+        "name": "Theme source",
+        "body": "Keep palette values in src/styles/globals.css and consume semantic shadcn tokens through Tailwind utilities.",
+        "section": "colors"
+      },
+      {
+        "name": "Typography source",
+        "body": "Use the original Geist and Geist Mono configuration; do not introduce a second display font.",
+        "section": "typography"
+      },
+      {
+        "name": "Styling source",
+        "body": "Compose pages with Tailwind utility classes and existing shadcn components; do not add page classes to globals.css.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Use the existing theme tokens in light and dark mode.",
+      "Use Tailwind utilities for page layout and responsive states.",
+      "Use the installed shadcn components for controls."
+    ],
+    "donts": [
+      "Don't add custom page selectors to globals.css.",
+      "Don't introduce a replacement palette or display font."
+    ]
+  }
+}

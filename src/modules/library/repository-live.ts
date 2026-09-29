@@ -97,6 +97,7 @@ const upsertCatalogGame = (db: Database, game: CatalogGame) =>
       .onConflictDoUpdate({
         target: games.slug,
         set: {
+          ...(Number.isFinite(rawgId) ? { rawgId } : {}),
           title: game.title,
           coverUrl: game.coverUrl,
           releaseDate: game.releaseDate,

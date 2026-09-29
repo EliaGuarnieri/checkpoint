@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
-import { GameCatalog } from "~/modules/catalog/service";
+import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
 
 const catalogGames: ReadonlyArray<CatalogGame> = [
   {
@@ -37,6 +37,12 @@ const catalogGames: ReadonlyArray<CatalogGame> = [
 ];
 
 export const GameCatalogFake = Layer.succeed(GameCatalog, {
+  findById: (id) => {
+    const game = catalogGames.find((item) => item.id === id);
+    return game
+      ? Effect.succeed(game)
+      : Effect.fail(new CatalogUnavailable({ operation: "findById" }));
+  },
   searchByTitle: (title) =>
     Effect.succeed(
       catalogGames.filter((game) =>

@@ -7,16 +7,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Badge } from "~/components/ui/badge";
+import { GameCover } from "~/components/game-cover";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Button, buttonVariants } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
   Field,
   FieldDescription,
@@ -36,7 +30,6 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { fetchJson } from "~/lib/api";
-import { cn } from "cn";
 import {
   LibraryGameSchema,
   type LibraryGame,
@@ -45,34 +38,42 @@ import {
 
 const UpdatedResponse = Schema.Struct({ updated: Schema.Literal(true) });
 const RemovedResponse = Schema.Struct({ removed: Schema.Literal(true) });
-
-const statuses: ReadonlyArray<{ value: TrackingStatus; label: string }> = [
-  { value: "backlog", label: "Backlog" },
-  { value: "playing", label: "In corso" },
-  { value: "completed", label: "Completato" },
-  { value: "abandoned", label: "Abbandonato" },
+const statuses: ReadonlyArray<{
+  value: TrackingStatus;
+  label: string;
+  description: string;
+}> = [
+  { value: "backlog", label: "Da giocare", description: "È nella tua lista" },
+  { value: "playing", label: "In corso", description: "Ci stai giocando" },
+  { value: "completed", label: "Completato", description: "L'hai concluso" },
+  { value: "abandoned", label: "Abbandonato", description: "Lo hai lasciato" },
 ];
-
 const isTrackingStatus = (value: string): value is TrackingStatus =>
-  statuses.some((status) => status.value === value);
+  statuses.some((item) => item.value === value);
 
 export function GameDetail({ gameId }: { readonly gameId: string }) {
   const game = useQuery({
     queryKey: ["library-game", gameId],
     queryFn: () => fetchJson(LibraryGameSchema, `/api/library/${gameId}`),
   });
-  if (game.isLoading) return <Skeleton className="h-96" />;
+  if (game.isLoading)
+    return (
+      <div className="grid gap-8">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-96" />
+      </div>
+    );
   if (game.isError)
     return (
       <Alert variant="destructive">
         <AlertTitle>Gioco non disponibile</AlertTitle>
         <AlertDescription>
-          Non è stato possibile caricare questa voce della libreria.
+          Non è stato possibile caricare questa voce della libreria. Ricarica la
+          pagina per riprovare.
         </AlertDescription>
       </Alert>
     );
   if (!game.data) return <p>Gioco non trovato.</p>;
-
   return <GameDetailEditor key={game.data.updatedAt} game={game.data} />;
 }
 
@@ -82,6 +83,15 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   const [status, setStatus] = useState<TrackingStatus>(game.status);
   const [rating, setRating] = useState(game.rating?.toString() ?? "");
   const [note, setNote] = useState(game.note ?? "");
+  const invalidRating =
+    rating !== "" &&
+    (!Number.isInteger(Number(rating)) ||
+      Number(rating) < 1 ||
+      Number(rating) > 10);
+  const dirty =
+    status !== game.status ||
+    rating !== (game.rating?.toString() ?? "") ||
+    note !== (game.note ?? "");
   const update = useMutation({
     mutationFn: () =>
       fetchJson(UpdatedResponse, `/api/library/${game.id}`, {
@@ -105,143 +115,264 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
       fetchJson(RemovedResponse, `/api/library/${game.id}`, {
         method: "DELETE",
       }),
-    onSuccess: () => router.push("/library"),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["library"] });
+      router.push("/library");
+    },
   });
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <article className="space-y-8">
       <Link
         href="/library"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "sm" }),
-          "self-start",
-        )}
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <ArrowLeftIcon data-icon="inline-start" />
-        Torna alla libreria
+        <ArrowLeftIcon size={17} aria-hidden="true" /> Torna alla libreria
       </Link>
-      <div>
-        <div className="flex flex-wrap gap-2">
-          {game.genres.map((genre) => (
-            <Badge key={genre} variant="secondary">
-              {genre}
-            </Badge>
-          ))}
+
+      <header className="grid overflow-hidden rounded-xl bg-card text-card-foreground md:min-h-96 md:grid-cols-[1fr_47%]">
+        <div className="order-2 flex min-w-0 flex-col justify-center p-6 sm:p-8 md:order-1 lg:p-10">
+          <div className="flex flex-wrap gap-2">
+            {game.genres.slice(0, 3).map((genre) => (
+              <Badge key={genre} variant="secondary">
+                {genre}
+              </Badge>
+            ))}
+          </div>
+          <h1 className="mt-5 text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+            {game.title}
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {game.developers.join(", ") || "Sviluppatore non disponibile"}
+            <span aria-hidden="true"> · </span>
+            {game.releaseDate?.slice(0, 4) ?? "Anno ignoto"}
+          </p>
+          <div className="mt-10 flex flex-wrap gap-x-12 gap-y-5 border-t border-border pt-5">
+            <div className="flex flex-col gap-1">
+              <small className="text-xs text-muted-foreground">
+                Il tuo stato
+              </small>
+              <strong className="text-lg font-semibold">
+                {statuses.find((item) => item.value === game.status)?.label}
+              </strong>
+            </div>
+            <div className="flex flex-col gap-1">
+              <small className="text-xs text-muted-foreground">
+                Il tuo voto
+              </small>
+              <strong className="text-lg font-semibold">
+                {game.rating != null ? (
+                  <>
+                    {game.rating}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      /10
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </strong>
+            </div>
+          </div>
         </div>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight">
-          {game.title}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {game.developers.join(", ")} ·{" "}
-          {game.releaseDate?.slice(0, 4) ?? "Data sconosciuta"}
-        </p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Il tuo checkpoint</CardTitle>
-          <CardDescription>
-            Stato, voto e nota sono personali e non vengono modificati dagli
-            import successivi.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="status">Stato</FieldLabel>
-              <Select
-                value={status}
-                onValueChange={(value) => {
-                  if (value && isTrackingStatus(value)) setStatus(value);
-                }}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue>
-                    {(value) =>
-                      typeof value === "string"
-                        ? (statuses.find((item) => item.value === value)
-                            ?.label ?? value)
-                        : ""
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {statuses.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field
-              data-invalid={
-                rating !== "" && (Number(rating) < 1 || Number(rating) > 10)
-              }
+        <div className="order-1 h-64 bg-muted md:order-2 md:h-full">
+          <GameCover
+            title={game.title}
+            coverUrl={game.coverUrl}
+            rawgId={game.rawgId}
+            sizes="(max-width: 760px) 100vw, 50vw"
+            priority
+          />
+        </div>
+      </header>
+
+      <div className="grid gap-10 pt-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(16rem,1fr)] lg:gap-16">
+        <section className="min-w-0" aria-labelledby="checkpoint-title">
+          <div className="mb-8">
+            <h2
+              id="checkpoint-title"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl"
             >
-              <FieldLabel htmlFor="rating">Voto</FieldLabel>
-              <Input
-                id="rating"
-                type="number"
-                min={1}
-                max={10}
-                value={rating}
-                onChange={(event) => setRating(event.target.value)}
-                aria-invalid={
-                  rating !== "" && (Number(rating) < 1 || Number(rating) > 10)
-                }
-              />
-              <FieldDescription>
-                Un numero intero da 1 a 10, oppure lascia vuoto.
-              </FieldDescription>
-            </Field>
+              Il tuo checkpoint
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Lo spazio per tenere traccia di dove sei e di cosa vuoi ricordare.
+            </p>
+          </div>
+          <FieldGroup>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="status">Stato</FieldLabel>
+                <Select
+                  value={status}
+                  onValueChange={(value) => {
+                    if (value && isTrackingStatus(value)) setStatus(value);
+                  }}
+                >
+                  <SelectTrigger id="status">
+                    <SelectValue>
+                      {(value) =>
+                        typeof value === "string"
+                          ? (statuses.find((item) => item.value === value)
+                              ?.label ?? value)
+                          : ""
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {statuses.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  {statuses.find((item) => item.value === status)?.description}
+                </FieldDescription>
+              </Field>
+              <Field data-invalid={invalidRating}>
+                <FieldLabel htmlFor="rating">
+                  Il tuo voto{" "}
+                  <span className="font-normal text-muted-foreground">
+                    Facoltativo
+                  </span>
+                </FieldLabel>
+                <div className="relative">
+                  <Input
+                    id="rating"
+                    type="number"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={rating}
+                    onChange={(event) => setRating(event.target.value)}
+                    aria-invalid={invalidRating}
+                    placeholder="—"
+                    className="pr-12"
+                  />
+                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
+                    / 10
+                  </span>
+                </div>
+                <FieldDescription>
+                  {invalidRating
+                    ? "Inserisci un numero intero da 1 a 10."
+                    : "Un numero intero da 1 a 10."}
+                </FieldDescription>
+              </Field>
+            </div>
             <Field>
-              <FieldLabel htmlFor="note">Nota</FieldLabel>
+              <FieldLabel htmlFor="note">
+                La tua nota{" "}
+                <span className="font-normal text-muted-foreground">
+                  Facoltativa
+                </span>
+              </FieldLabel>
               <Textarea
                 id="note"
                 rows={8}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Cosa vuoi ricordare di questo gioco?"
+                placeholder="Un momento da ricordare, una cosa da fare quando torni a giocare…"
               />
+              <FieldDescription>
+                Resta privata nella tua libreria.
+              </FieldDescription>
             </Field>
-            <div className="flex flex-wrap justify-between gap-3">
-              <Button
-                variant="destructive"
-                onClick={() => remove.mutate()}
-                disabled={remove.isPending}
-              >
-                <Trash2Icon data-icon="inline-start" />
-                Rimuovi
-              </Button>
+            {(update.isError || remove.isError) && (
+              <Alert variant="destructive">
+                <AlertTitle>Modifica non riuscita</AlertTitle>
+                <AlertDescription>
+                  I dati che hai scritto sono ancora qui. Riprova tra poco.
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
+              <span className="text-xs text-muted-foreground">
+                {dirty ? "Modifiche non salvate" : "Tutto aggiornato"}
+              </span>
               <Button
                 onClick={() => update.mutate()}
-                disabled={
-                  update.isPending ||
-                  (rating !== "" && (Number(rating) < 1 || Number(rating) > 10))
-                }
+                disabled={!dirty || invalidRating || update.isPending}
               >
                 {update.isPending ? (
                   <Spinner data-icon="inline-start" />
                 ) : (
                   <SaveIcon data-icon="inline-start" />
-                )}
-                Salva checkpoint
+                )}{" "}
+                Salva modifiche
               </Button>
             </div>
-            {(update.isError || remove.isError) && (
-              <Alert variant="destructive">
-                <AlertTitle>Modifica non salvata</AlertTitle>
-                <AlertDescription>
-                  La richiesta non è riuscita. I dati nel modulo sono rimasti
-                  invariati: puoi riprovare.
-                </AlertDescription>
-              </Alert>
-            )}
           </FieldGroup>
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+
+        <aside
+          className="border-t border-border pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10"
+          aria-label="Informazioni sul gioco"
+        >
+          <h2 className="text-xl font-semibold tracking-tight">Il gioco</h2>
+          <dl className="mt-5 divide-y divide-border border-t border-border">
+            <div className="py-4">
+              <dt className="text-xs text-muted-foreground">Uscita</dt>
+              <dd className="mt-1 text-sm font-medium">
+                {game.releaseDate
+                  ? new Intl.DateTimeFormat("it-IT", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    }).format(new Date(game.releaseDate))
+                  : "Non disponibile"}
+              </dd>
+            </div>
+            <div className="py-4">
+              <dt className="text-xs text-muted-foreground">Sviluppatore</dt>
+              <dd className="mt-1 text-sm font-medium">
+                {game.developers.join(", ") || "Non disponibile"}
+              </dd>
+            </div>
+            <div className="py-4">
+              <dt className="text-xs text-muted-foreground">Publisher</dt>
+              <dd className="mt-1 text-sm font-medium">
+                {game.publishers.join(", ") || "Non disponibile"}
+              </dd>
+            </div>
+            <div className="py-4">
+              <dt className="text-xs text-muted-foreground">Generi</dt>
+              <dd className="mt-1 text-sm font-medium">
+                {game.genres.join(", ") || "Non disponibili"}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+            Metadati del gioco da{" "}
+            <a
+              href="https://rawg.io"
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline underline-offset-4"
+            >
+              RAWG
+            </a>
+            . Stato, voto e nota sono tuoi.
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-6"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (window.confirm(`Rimuovere ${game.title} dalla libreria?`))
+                remove.mutate();
+            }}
+          >
+            <Trash2Icon data-icon="inline-start" /> Rimuovi dalla libreria
+          </Button>
+        </aside>
+      </div>
+    </article>
   );
 }
