@@ -1,4 +1,4 @@
-import { Effect, Layer, Schedule, Schema } from "effect";
+import { Effect, Layer, Redacted, Schedule, Schema } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
 import { CatalogUnavailable, GameCatalog } from "~/modules/catalog/service";
@@ -56,12 +56,12 @@ const toCatalogGame = (game: typeof RawgDetail.Type): CatalogGame => ({
   publishers: game.publishers.map(({ name }) => name),
 });
 
-export const makeGameCatalogLive = (apiKey: string) =>
+export const makeGameCatalogLive = (apiKey: Redacted.Redacted<string>) =>
   Layer.succeed(GameCatalog, {
     searchByTitle: (title) =>
       Effect.gen(function* () {
         const search = yield* requestJson(
-          `https://api.rawg.io/api/games?key=${encodeURIComponent(apiKey)}&search=${encodeURIComponent(title)}&page_size=10`,
+          `https://api.rawg.io/api/games?key=${encodeURIComponent(Redacted.value(apiKey))}&search=${encodeURIComponent(title)}&page_size=10`,
           RawgSearchResponse,
         );
 
@@ -69,7 +69,7 @@ export const makeGameCatalogLive = (apiKey: string) =>
           search.results,
           (result) =>
             requestJson(
-              `https://api.rawg.io/api/games/${result.id}?key=${encodeURIComponent(apiKey)}`,
+              `https://api.rawg.io/api/games/${result.id}?key=${encodeURIComponent(Redacted.value(apiKey))}`,
               RawgDetail,
             ).pipe(Effect.map(toCatalogGame)),
           { concurrency: 4 },

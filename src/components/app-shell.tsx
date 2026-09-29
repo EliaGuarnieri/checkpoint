@@ -40,13 +40,9 @@ export function AppShell({ children }: { readonly children: ReactNode }) {
       <footer className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
         <Separator className="mb-6" />
         <p className="text-sm text-muted-foreground">
-          {process.env.CATALOG_PROVIDER === "live" ? (
-            <a href="https://rawg.io" target="_blank" rel="noreferrer">
-              Game data provided by RAWG
-            </a>
-          ) : (
-            "Demo catalog"
-          )}
+          <a href="https://rawg.io" target="_blank" rel="noreferrer">
+            Game data provided by RAWG
+          </a>
         </p>
       </footer>
     </div>

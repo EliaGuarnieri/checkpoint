@@ -1,22 +1,22 @@
-import { Schema } from "effect";
+import { Config, ConfigError } from "effect";
 
-const ApiKey = Schema.String.pipe(Schema.minLength(1));
+const requiredSecret = (name: string) =>
+  Config.redacted(
+    Config.string(name).pipe(
+      Config.validate({
+        message: `${name} must not be empty`,
+        validation: (value) => value.trim().length > 0,
+      }),
+    ),
+  );
 
-const AppConfigSchema = Schema.Union(
-  Schema.Struct({
-    catalogProvider: Schema.Literal("fake"),
-    rawgApiKey: Schema.String,
-  }),
-  Schema.Struct({
-    catalogProvider: Schema.Literal("live"),
-    rawgApiKey: ApiKey,
+export const DatabaseUrl = requiredSecret("DATABASE_URL");
+export const DatabaseMigrationUrl = requiredSecret("DATABASE_MIGRATION_URL");
+export const MigrationUrl = DatabaseMigrationUrl.pipe(
+  Config.orElseIf({
+    if: ConfigError.isMissingDataOnly,
+    orElse: () => DatabaseUrl,
   }),
 );
 
-export type AppConfig = typeof AppConfigSchema.Type;
-
-export const loadConfig = () =>
-  Schema.decodeUnknownSync(AppConfigSchema)({
-    catalogProvider: process.env.CATALOG_PROVIDER ?? "fake",
-    rawgApiKey: process.env.RAWG_API_KEY ?? "",
-  });
+export const RawgApiKey = requiredSecret("RAWG_API_KEY");

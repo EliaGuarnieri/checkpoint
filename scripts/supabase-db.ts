@@ -3,16 +3,35 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseEnv } from "node:util";
 
-import { Effect, ManagedRuntime } from "effect";
+import { ConfigProvider, Effect, ManagedRuntime, Redacted } from "effect";
 
-const fileVariables = parseEnv(readFileSync(".env.supabase.local", "utf8"));
+import {
+  DatabaseMigrationUrl,
+  DatabaseUrl,
+} from "../src/infrastructure/config";
+
+const fileVariables = parseEnv(readFileSync(".env", "utf8"));
+const fileProvider = ConfigProvider.fromMap(
+  new Map(
+    Object.entries(fileVariables).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ),
+);
 const caPath = resolve("certs/supabase-ca.crt");
 
 const connection = (name: "DATABASE_URL" | "DATABASE_MIGRATION_URL") => {
-  const value = fileVariables[name];
-  if (!value) throw new Error(`${name} is required in .env.supabase.local`);
+  const config = name === "DATABASE_URL" ? DatabaseUrl : DatabaseMigrationUrl;
+  const value = Redacted.value(
+    Effect.runSync(Effect.withConfigProvider(config, fileProvider)),
+  );
 
-  const url = new URL(value);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a PostgreSQL URI`);
+  }
   if (!["postgres:", "postgresql:"].includes(url.protocol)) {
     throw new Error(`${name} must be a PostgreSQL URI`);
   }
@@ -82,12 +101,15 @@ const main = async () => {
       break;
     }
     case "check": {
-      const [{ db }, { LibraryRepositoryLive }, { LibraryRepository }] =
-        await Promise.all([
-          import("../src/infrastructure/database/client"),
-          import("../src/modules/library/repository-live"),
-          import("../src/modules/library/service"),
-        ]);
+      const [
+        { closeDatabase },
+        { LibraryRepositoryLive },
+        { LibraryRepository },
+      ] = await Promise.all([
+        import("../src/infrastructure/database/client"),
+        import("../src/modules/library/repository-live"),
+        import("../src/modules/library/service"),
+      ]);
       const runtime = ManagedRuntime.make(LibraryRepositoryLive);
       try {
         const program = Effect.gen(function* () {
@@ -98,7 +120,7 @@ const main = async () => {
         console.log(`Supabase connected: ${library.length} library entries.`);
       } finally {
         await runtime.dispose();
-        await db.$client.end();
+        await closeDatabase();
       }
       break;
     }

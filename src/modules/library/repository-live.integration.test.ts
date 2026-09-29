@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { ConfigProvider, Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { LibraryRepositoryLive } from "./repository-live";
@@ -6,6 +6,14 @@ import { LibraryRepository } from "./service";
 
 describe("LibraryRepository with PostgreSQL", () => {
   it("persists a library entry through the Effect repository interface", async () => {
+    const configProvider = ConfigProvider.fromMap(
+      new Map([
+        [
+          "DATABASE_URL",
+          "postgres://checkpoint:checkpoint@localhost:5433/checkpoint_test",
+        ],
+      ]),
+    );
     const id = crypto.randomUUID();
     const game = {
       id,
@@ -34,7 +42,10 @@ describe("LibraryRepository with PostgreSQL", () => {
       yield* repository.remove(added.id);
 
       return updated;
-    }).pipe(Effect.provide(LibraryRepositoryLive));
+    }).pipe(
+      Effect.provide(LibraryRepositoryLive),
+      Effect.withConfigProvider(configProvider),
+    );
 
     await expect(Effect.runPromise(program)).resolves.toMatchObject({
       status: "playing",

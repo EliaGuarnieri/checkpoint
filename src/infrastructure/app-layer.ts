@@ -1,21 +1,12 @@
-import { Layer } from "effect";
+import { Effect, Layer } from "effect";
 
-import { loadConfig } from "~/infrastructure/config";
-import { GameCatalogFake } from "~/modules/catalog/fakes";
+import { RawgApiKey } from "~/infrastructure/config";
 import { makeGameCatalogLive } from "~/modules/catalog/rawg-live";
 import { LibraryRepositoryLive } from "~/modules/library/repository-live";
-import { LibraryRepositoryMemory } from "~/modules/library/repository-memory";
 
-export const makeAppLayer = () => {
-  const config = loadConfig();
-  const catalog =
-    config.catalogProvider === "live"
-      ? makeGameCatalogLive(config.rawgApiKey)
-      : GameCatalogFake;
-  const library =
-    process.env.DATABASE_URL === "memory"
-      ? LibraryRepositoryMemory
-      : LibraryRepositoryLive;
+const ConfiguredCatalog = Layer.unwrapEffect(
+  Effect.map(RawgApiKey, makeGameCatalogLive),
+);
 
-  return Layer.mergeAll(catalog, library);
-};
+export const makeAppLayer = () =>
+  Layer.mergeAll(ConfiguredCatalog, LibraryRepositoryLive);

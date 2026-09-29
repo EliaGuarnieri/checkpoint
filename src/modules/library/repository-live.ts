@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, gte, ilike } from "drizzle-orm";
 import { Effect, Layer } from "effect";
 
-import { db } from "~/infrastructure/database/client";
+import { DatabaseUrl } from "~/infrastructure/config";
+import { getDatabase, type Database } from "~/infrastructure/database/client";
 import {
   companies,
   gameCompanies,
@@ -21,14 +22,21 @@ import {
 
 const databaseEffect = <A>(
   operation: LibraryOperation,
-  run: () => Promise<A>,
+  run: (db: Database) => Promise<A>,
 ) =>
-  Effect.tryPromise({
-    try: run,
-    catch: (cause) => new DatabaseUnavailable({ operation, cause }),
+  Effect.gen(function* () {
+    const databaseUrl = yield* DatabaseUrl.pipe(
+      Effect.mapError((cause) => new DatabaseUnavailable({ operation, cause })),
+    );
+    return yield* Effect.tryPromise({
+      try: () => run(getDatabase(databaseUrl)),
+      catch: (cause) => new DatabaseUnavailable({ operation, cause }),
+    });
   });
 
-type DatabaseTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
 
 const syncGameMetadata = async (
   transaction: DatabaseTransaction,
@@ -74,7 +82,7 @@ const syncGameMetadata = async (
   }
 };
 
-const upsertCatalogGame = (game: CatalogGame) =>
+const upsertCatalogGame = (db: Database, game: CatalogGame) =>
   db.transaction(async (transaction) => {
     const rawgId = Number(game.id);
     const [stored] = await transaction
@@ -102,7 +110,10 @@ const upsertCatalogGame = (game: CatalogGame) =>
     return stored.id;
   });
 
-const loadLibraryGame = async (gameId: string): Promise<LibraryGame | null> => {
+const loadLibraryGame = async (
+  db: Database,
+  gameId: string,
+): Promise<LibraryGame | null> => {
   const [row] = await db
     .select({
       id: games.id,
@@ -148,11 +159,11 @@ const loadLibraryGame = async (gameId: string): Promise<LibraryGame | null> => {
 
 export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
   refreshCatalogGames: (catalogGames) =>
-    databaseEffect("refreshCatalogGames", async () => {
-      for (const game of catalogGames) await upsertCatalogGame(game);
+    databaseEffect("refreshCatalogGames", async (db) => {
+      for (const game of catalogGames) await upsertCatalogGame(db, game);
     }),
   containsCatalogGame: (catalogGameId) =>
-    databaseEffect("containsCatalogGame", async () => {
+    databaseEffect("containsCatalogGame", async (db) => {
       const rawgId = Number(catalogGameId);
       const result = await db
         .select({ id: games.id })
@@ -163,7 +174,7 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
       return result.length > 0;
     }),
   list: (filters: LibraryFilters = {}) =>
-    databaseEffect("listLibrary", async () => {
+    databaseEffect("listLibrary", async (db) => {
       const conditions = [
         filters.query ? ilike(games.title, `%${filters.query}%`) : undefined,
         filters.status ? eq(libraryEntries.status, filters.status) : undefined,
@@ -186,7 +197,7 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(order);
       const loaded = await Promise.all(
-        rows.map(({ id }) => loadLibraryGame(id)),
+        rows.map(({ id }) => loadLibraryGame(db, id)),
       );
       return loaded.filter((game): game is LibraryGame => {
         if (!game) return false;
@@ -199,7 +210,9 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
       });
     }),
   findById: (gameId) =>
-    databaseEffect("findLibraryEntry", () => loadLibraryGame(gameId)).pipe(
+    databaseEffect("findLibraryEntry", (db) =>
+      loadLibraryGame(db, gameId),
+    ).pipe(
       Effect.flatMap((game) =>
         game
           ? Effect.succeed(game)
@@ -207,15 +220,15 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
       ),
     ),
   addManualGame: (game) =>
-    databaseEffect("addManualGame", async () => {
-      const gameId = await upsertCatalogGame(game);
+    databaseEffect("addManualGame", async (db) => {
+      const gameId = await upsertCatalogGame(db, game);
       await db
         .insert(libraryEntries)
         .values({ gameId, status: "backlog" })
         .onConflictDoNothing();
     }),
   update: (gameId, update) =>
-    databaseEffect("updateLibraryEntry", () =>
+    databaseEffect("updateLibraryEntry", (db) =>
       db
         .update(libraryEntries)
         .set({ ...update, updatedAt: new Date() })
@@ -229,7 +242,7 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
       ),
     ),
   remove: (gameId) =>
-    databaseEffect("removeLibraryEntry", () =>
+    databaseEffect("removeLibraryEntry", (db) =>
       db
         .delete(libraryEntries)
         .where(eq(libraryEntries.gameId, gameId))

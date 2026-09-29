@@ -1,4 +1,7 @@
-import { db } from "../src/infrastructure/database/client";
+import { Effect } from "effect";
+
+import { DatabaseUrl } from "../src/infrastructure/config";
+import { getDatabase } from "../src/infrastructure/database/client";
 import {
   companies,
   gameCompanies,
@@ -7,6 +10,8 @@ import {
   genres,
   libraryEntries,
 } from "../src/infrastructure/database/schema";
+
+const db = getDatabase(Effect.runSync(DatabaseUrl));
 
 const seedGames = [
   {

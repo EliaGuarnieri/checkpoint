@@ -4,9 +4,9 @@ Checkpoint è un diario personale per videogiochi. Cerchi un gioco nel catalogo,
 
 Il progetto è un esercizio su [Effect](https://effect.website/). Le chiamate al catalogo, la validazione degli input e la persistenza passano attraverso programmi Effect con dipendenze ed errori espliciti.
 
-## Demo
+## Sviluppo locale
 
-La configurazione predefinita usa un catalogo locale e una libreria in PostgreSQL. Non richiede API key o richieste esterne. Puoi cercare Hades, Celeste o Dead Cells e aggiungerli dalla pagina `/library`.
+L'app usa il catalogo RAWG e una libreria in PostgreSQL locale. Per cercare giochi dalla pagina `/library` serve una chiave RAWG in `.env`. I test possono usare un catalogo fake deterministico senza credenziali o richieste esterne.
 
 ![Libreria di Checkpoint](docs/screenshots/library.png)
 
@@ -22,7 +22,7 @@ pnpm setup
 pnpm dev
 ```
 
-Apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` da `.env.example`, avvia PostgreSQL, applica le migration e carica cinque voci dimostrative. Il seed è ripetibile.
+Inserisci `RAWG_API_KEY` in `.env`, poi apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` da `.env.example`, avvia PostgreSQL, applica le migration e carica cinque voci dimostrative. Il seed è ripetibile.
 
 ```bash
 pnpm test
@@ -45,18 +45,27 @@ Il client limita a una connessione per istanza quando l'host è Supabase. Verifi
 
 Lo sviluppo locale continua a usare `DATABASE_URL` in `.env` e PostgreSQL in Docker. `pnpm setup` forza il database locale anche se hai una variabile di migrazione remota nell'ambiente. I test unitari usano il repository in memoria e partono con `pnpm test`; `pnpm test:db` avvia un PostgreSQL di test separato sulla porta `5433`, applica le migration e verifica il repository live. Nessuno dei due comandi di test usa Supabase.
 
+Le variabili dell'app sono descritte in `src/infrastructure/config.ts` con `Config` di Effect:
+
+| Variabile                | Regola                                                                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Obbligatoria alla prima operazione del repository live; punta a PostgreSQL locale nello sviluppo e al Transaction pooler Supabase nell'app ospitata.             |
+| `DATABASE_MIGRATION_URL` | Usata da Drizzle Kit per le migration; se manca, usa `DATABASE_URL`. Lo script Supabase la richiede esplicitamente per evitare migration sul Transaction pooler. |
+| `RAWG_API_KEY`           | Obbligatoria e non vuota nell'app: il catalogo live usa sempre RAWG.                                                                                             |
+
+Le URL e la chiave RAWG sono valori `Redacted`: si leggono esplicitamente soltanto quando servono alla connessione o alla richiesta esterna. Next.js carica `.env` nello sviluppo locale; sull'hosting le variabili vanno configurate lato server. Il repository in memoria e il catalogo fake vengono forniti esplicitamente solo nei test.
+
 Poiché l'app usa soltanto Drizzle, puoi disattivare la **Data API** nelle impostazioni API di Supabase. Il prototipo non ha autenticazione: se pubblichi l'app senza limitare l'accesso, chiunque raggiunga i suoi endpoint può modificare l'unica libreria personale. [Drizzle e Data API](https://supabase.com/docs/guides/database/drizzle).
 
 ## Catalogo RAWG
 
-La demo usa `CATALOG_PROVIDER=fake`. Per cercare nel catalogo live, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e imposta queste variabili in `.env`:
+Per cercare nel catalogo, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e impostala in `.env`:
 
 ```env
-CATALOG_PROVIDER=live
 RAWG_API_KEY=la-tua-chiave
 ```
 
-Non committare `.env`. L'interfaccia mostra l'attribuzione RAWG quando usa il catalogo live.
+Non committare `.env`. Senza chiave, le richieste API restituiscono un errore di configurazione. Il catalogo fake è disponibile come `Layer` nei test. L'interfaccia mostra l'attribuzione RAWG.
 
 ## Funzionalità
 
@@ -73,7 +82,7 @@ flowchart LR
   UI[Next.js + TanStack Query] --> API[Route Handlers]
   API --> Catalog[GameCatalog]
   API --> Library[LibraryRepository]
-  Catalog --> Rawg[RAWG API o catalogo demo]
+  Catalog --> Rawg[RAWG API]
   Library --> Drizzle[Drizzle ORM]
   Drizzle --> Postgres[(PostgreSQL)]
 ```
@@ -83,7 +92,7 @@ Il codice applicativo è organizzato in `src/modules`; gli adapter e la configur
 ### Come viene usato Effect
 
 - `Context.Tag` dichiara `GameCatalog` e `LibraryRepository`.
-- `Layer` sceglie gli adapter live, demo o in memoria.
+- `Layer` fornisce gli adapter live all'app e quelli fake o in memoria ai test.
 - `Schema` decodifica input HTTP, configurazione e risposte RAWG.
 - `Data.TaggedError` distingue errori del catalogo, del database e voci mancanti.
 - `Effect.forEach` limita a quattro le richieste di dettaglio RAWG concorrenti.
