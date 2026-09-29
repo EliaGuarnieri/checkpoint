@@ -1,43 +1,32 @@
 "use client";
 
-import { MoonIcon, SunIcon, SunMoonIcon } from "lucide-react";
+import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-
 export function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-        <SunMoonIcon data-icon="inline-start" />
-        Tema
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup
-          value={theme ?? "dark"}
-          onValueChange={(value) => {
-            if (value === "dark" || value === "light") setTheme(value);
-          }}
-        >
-          <DropdownMenuRadioItem value="dark">
-            <MoonIcon />
-            Dark
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="light">
-            <SunIcon />
-            Light
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isDark}
+      aria-label="Tema scuro"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="group inline-flex h-10 items-center rounded-full p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <span className="relative flex h-8 w-16 items-center rounded-full border border-border bg-muted transition-colors duration-200 group-hover:bg-accent">
+        <span className="absolute top-0.5 left-0.5 size-[26px] rounded-full bg-background shadow-sm transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none dark:translate-x-8 dark:bg-primary" />
+        <SunIcon
+          aria-hidden="true"
+          className="relative z-10 ml-[7px] size-4 text-primary transition-colors duration-200 dark:text-muted-foreground"
+        />
+        <MoonIcon
+          aria-hidden="true"
+          className="relative z-10 ml-4 size-4 text-muted-foreground transition-colors duration-200 dark:text-primary-foreground"
+        />
+      </span>
+    </button>
   );
 }
