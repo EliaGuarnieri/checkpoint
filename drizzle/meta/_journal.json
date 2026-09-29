@@ -29,6 +29,13 @@
       "when": 1790673271121,
       "tag": "0003_relation_foreign_key_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790673448255,
+      "tag": "0004_restrict_rls_trigger_execution",
+      "breakpoints": true
     }
   ]
 }
