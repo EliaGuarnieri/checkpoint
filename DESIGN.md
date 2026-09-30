@@ -105,7 +105,7 @@ src/styles/globals.css è la fonte normativa delle variabili semantiche; il fron
 
 **Display e corpo:** Geist (src/app/layout.tsx, src/styles/typeset.css). **Monospace:** Geist Mono, per scorciatoie e dati che lo richiedono. La stessa famiglia per testo e titoli mantiene l'archivio compatto e leggibile.
 
-- **Display:** titoli di pagina e di gioco semibold (36px su mobile, 48px da sm, 60px da lg; line-height 1.25), con tracking stretto.
+- **Display:** titoli di pagina e di gioco semibold (36px su mobile, 48px da sm, 60px da lg; line-height 1.25), con tracking stretto. Il titolo della libreria usa 32px su mobile per affiancare l'azione di aggiunta.
 - **Titolo di sezione:** semibold (24px, poi 30px da sm); i titoli delle card sono semibold (24px).
 - **Corpo:** interfaccia e descrizioni soprattutto a 14px, con 16px per il testo introduttivo da sm; le descrizioni lunghe restano entro circa 65 caratteri per riga.
 - **Etichetta e metadati:** 12–14px, spesso in muted-foreground; il voto usa numeri tabulari dove deve allinearsi.
@@ -116,7 +116,7 @@ src/styles/globals.css è la fonte normativa delle variabili semantiche; il fron
 
 L'header e il contenuto condividono un contenitore centrato con larghezza massima di 1450px. Il padding laterale passa da 16px a 24px su sm e 40px su lg. Lo spazio verticale del contenuto passa da 32px a 40px e 48px. I gruppi principali usano un ritmo ampio; la griglia delle card usa 24px tra gli elementi.
 
-La libreria presenta un'intestazione, filtri di stato e filtri avanzati, poi card con cover in rapporto 1.55:1. La griglia passa da una colonna a due su sm e tre su xl. Nel dettaglio, la cover precede il testo su mobile; da md la testata affianca i due. Editor personale e metadati diventano colonne da lg. L'header colloca la ricerca su una seconda riga negli schermi stretti e su una riga unica da lg.
+La libreria presenta un'intestazione, filtri di stato e filtri avanzati, poi card con cover in rapporto 1.65:1. La griglia passa da una colonna a due su sm e tre su xl. Su mobile il titolo della libreria affianca l'azione di aggiunta, lasciando più spazio alla prima cover. Nel dettaglio, la cover precede il testo su mobile; da md la testata affianca i due. Editor personale e metadati diventano colonne da lg. L'header colloca la ricerca su una seconda riga negli schermi stretti e su una riga unica da lg.
 
 **The Cover First Rule.** Lascia alle cover spazio sufficiente per identificare i giochi; mantieni stato, titolo e voto leggibili anche senza immagine.
 

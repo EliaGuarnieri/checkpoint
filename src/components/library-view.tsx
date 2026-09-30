@@ -113,13 +113,13 @@ export function LibraryView() {
   };
 
   return (
-    <div className="space-y-12">
-      <header className="flex flex-col justify-between gap-6 border-b border-border pb-10 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+    <div className="space-y-8">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-3 border-b border-border pb-4 sm:flex sm:items-end sm:justify-between sm:gap-4">
+        <div className="contents sm:block">
+          <h1 className="col-start-1 row-start-1 text-[2rem] leading-tight font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             La tua libreria<span className="text-primary">.</span>
           </h1>
-          <p className="mt-4 max-w-[65ch] text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="col-span-2 row-start-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground sm:mt-3 sm:text-base">
             Ogni gioco, al suo posto. I tuoi progressi e le tue impressioni,
             sempre a portata di mano.
           </p>
@@ -127,13 +127,15 @@ export function LibraryView() {
         <Button
           onClick={focusSearch}
           size="lg"
-          className="shrink-0 self-start sm:self-auto"
+          aria-label="Aggiungi un gioco"
+          className="col-start-2 row-start-1 h-11 shrink-0 self-start sm:h-9 sm:self-auto"
         >
-          <PlusIcon data-icon="inline-start" /> Aggiungi un gioco
+          <PlusIcon data-icon="inline-start" /> Aggiungi
+          <span className="hidden sm:inline">un gioco</span>
         </Button>
       </header>
 
-      <section className="space-y-6" aria-label="Esplora la libreria">
+      <section className="space-y-4" aria-label="Esplora la libreria">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-baseline gap-3">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -155,7 +157,10 @@ export function LibraryView() {
                 if (value) setSort(value as Sort);
               }}
             >
-              <SelectTrigger aria-label="Ordina libreria" className="w-47.5">
+              <SelectTrigger
+                aria-label="Ordina libreria"
+                className="w-47.5 data-[size=default]:h-11 sm:data-[size=default]:h-8"
+              >
                 <SelectValue>
                   {(value) => sortLabels[value as Sort] ?? "Ordina"}
                 </SelectValue>
@@ -173,7 +178,7 @@ export function LibraryView() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border pb-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border pb-3 xl:flex-row xl:items-start xl:justify-between">
           <fieldset className="flex min-w-0 gap-1 overflow-x-auto pb-1">
             <legend className="sr-only">Filtra per stato</legend>
             {statuses.map((item) => {
@@ -190,7 +195,7 @@ export function LibraryView() {
                   type="button"
                   variant={status === item.value ? "default" : "ghost"}
                   size="sm"
-                  className="shrink-0 rounded-full"
+                  className="h-11 shrink-0 rounded-full sm:h-7"
                   onClick={() => setStatus(item.value)}
                   aria-pressed={status === item.value}
                 >
@@ -201,7 +206,7 @@ export function LibraryView() {
             })}
           </fieldset>
           <details className="group relative shrink-0">
-            <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 text-[0.8rem] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <summary className="flex h-11 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 text-[0.8rem] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring sm:h-7 [&::-webkit-details-marker]:hidden">
               <SlidersHorizontalIcon size={17} aria-hidden="true" /> Filtri{" "}
               {activeFilters.length > 0 && (
                 <Badge variant="secondary">{activeFilters.length}</Badge>
@@ -322,7 +327,7 @@ export function LibraryView() {
                 className="group block min-w-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground transition-[transform,box-shadow] duration-300 outline-none hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transform-none"
                 key={game.id}
               >
-                <div className="relative aspect-[1.55] overflow-hidden bg-muted">
+                <div className="relative aspect-[1.65] overflow-hidden bg-muted">
                   <GameCover
                     title={game.title}
                     coverUrl={game.coverUrl}
