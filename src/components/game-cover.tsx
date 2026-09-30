@@ -54,6 +54,7 @@ export function GameCover({
           sizes={sizes}
           priority={priority}
           className="object-cover"
+          loading="eager"
           onError={() => setFailedUrl(imageUrl)}
         />
       ) : (
