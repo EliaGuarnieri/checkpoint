@@ -8,9 +8,9 @@ Il progetto è un esercizio su [Effect](https://effect.website/). Le chiamate al
 
 L'app usa il catalogo RAWG e una libreria in PostgreSQL locale. Per cercare giochi dalla pagina `/library` serve una chiave RAWG in `.env`. I test possono usare un catalogo fake deterministico senza credenziali o richieste esterne.
 
-![Libreria di Checkpoint](docs/screenshots/library.png)
+![Libreria di Checkpoint con copertine e filtri](docs/screenshots/library.png)
 
-![Dettaglio di un gioco](docs/screenshots/game-detail.png)
+![Dettaglio di Baldur's Gate III con stato, voto e nota](docs/screenshots/game-detail.png)
 
 ## Avvio rapido
 

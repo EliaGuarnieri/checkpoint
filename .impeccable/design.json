@@ -1,147 +1,446 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-29T18:15:56Z",
-  "title": "Design di Checkpoint",
+  "generatedAt": "2026-09-30T14:59:27Z",
+  "title": "Design System: Checkpoint",
   "extensions": {
     "colorMeta": {
       "background-light": {
         "role": "neutral",
-        "displayName": "Background Light"
+        "displayName": "Chiaro puro",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0 0)",
+          "oklch(0.250 0 0)",
+          "oklch(0.360 0 0)",
+          "oklch(0.470 0 0)",
+          "oklch(0.590 0 0)",
+          "oklch(0.710 0 0)",
+          "oklch(0.830 0 0)",
+          "oklch(0.950 0 0)"
+        ]
       },
       "foreground-light": {
         "role": "neutral",
-        "displayName": "Foreground Light"
+        "displayName": "Inchiostro profondo",
+        "canonical": "oklch(0.145 0.008 326)",
+        "tonalRamp": [
+          "oklch(0.150 0.008 326)",
+          "oklch(0.250 0.008 326)",
+          "oklch(0.360 0.008 326)",
+          "oklch(0.470 0.008 326)",
+          "oklch(0.590 0.008 326)",
+          "oklch(0.710 0.008 326)",
+          "oklch(0.830 0.008 326)",
+          "oklch(0.950 0.008 326)"
+        ]
       },
       "card-light": {
         "role": "neutral",
-        "displayName": "Card Light"
+        "displayName": "Scheda chiara",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0 0)",
+          "oklch(0.250 0 0)",
+          "oklch(0.360 0 0)",
+          "oklch(0.470 0 0)",
+          "oklch(0.590 0 0)",
+          "oklch(0.710 0 0)",
+          "oklch(0.830 0 0)",
+          "oklch(0.950 0 0)"
+        ]
       },
       "primary-light": {
         "role": "primary",
-        "displayName": "Primary Light"
+        "displayName": "Checkpoint magenta",
+        "canonical": "oklch(0.518 0.253 323.949)",
+        "tonalRamp": [
+          "oklch(0.150 0.253 323.949)",
+          "oklch(0.250 0.253 323.949)",
+          "oklch(0.360 0.253 323.949)",
+          "oklch(0.470 0.253 323.949)",
+          "oklch(0.590 0.253 323.949)",
+          "oklch(0.710 0.253 323.949)",
+          "oklch(0.830 0.253 323.949)",
+          "oklch(0.950 0.253 323.949)"
+        ]
       },
       "primary-foreground-light": {
         "role": "neutral",
-        "displayName": "Primary Foreground Light"
+        "displayName": "Testo su magenta",
+        "canonical": "oklch(0.977 0.017 320.058)",
+        "tonalRamp": [
+          "oklch(0.150 0.017 320.058)",
+          "oklch(0.250 0.017 320.058)",
+          "oklch(0.360 0.017 320.058)",
+          "oklch(0.470 0.017 320.058)",
+          "oklch(0.590 0.017 320.058)",
+          "oklch(0.710 0.017 320.058)",
+          "oklch(0.830 0.017 320.058)",
+          "oklch(0.950 0.017 320.058)"
+        ]
+      },
+      "secondary-light": {
+        "role": "neutral",
+        "displayName": "Grigio secondario chiaro",
+        "canonical": "oklch(0.967 0.001 286.375)",
+        "tonalRamp": [
+          "oklch(0.150 0.001 286.375)",
+          "oklch(0.250 0.001 286.375)",
+          "oklch(0.360 0.001 286.375)",
+          "oklch(0.470 0.001 286.375)",
+          "oklch(0.590 0.001 286.375)",
+          "oklch(0.710 0.001 286.375)",
+          "oklch(0.830 0.001 286.375)",
+          "oklch(0.950 0.001 286.375)"
+        ]
+      },
+      "secondary-foreground-light": {
+        "role": "neutral",
+        "displayName": "Inchiostro secondario",
+        "canonical": "oklch(0.21 0.006 285.885)",
+        "tonalRamp": [
+          "oklch(0.150 0.006 285.885)",
+          "oklch(0.250 0.006 285.885)",
+          "oklch(0.360 0.006 285.885)",
+          "oklch(0.470 0.006 285.885)",
+          "oklch(0.590 0.006 285.885)",
+          "oklch(0.710 0.006 285.885)",
+          "oklch(0.830 0.006 285.885)",
+          "oklch(0.950 0.006 285.885)"
+        ]
       },
       "muted-light": {
         "role": "neutral",
-        "displayName": "Muted Light"
+        "displayName": "Superficie attenuata chiara",
+        "canonical": "oklch(0.96 0.003 325.6)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 325.6)",
+          "oklch(0.250 0.003 325.6)",
+          "oklch(0.360 0.003 325.6)",
+          "oklch(0.470 0.003 325.6)",
+          "oklch(0.590 0.003 325.6)",
+          "oklch(0.710 0.003 325.6)",
+          "oklch(0.830 0.003 325.6)",
+          "oklch(0.950 0.003 325.6)"
+        ]
       },
       "muted-foreground-light": {
         "role": "neutral",
-        "displayName": "Muted Foreground Light"
+        "displayName": "Testo attenuato chiaro",
+        "canonical": "oklch(0.542 0.034 322.5)",
+        "tonalRamp": [
+          "oklch(0.150 0.034 322.5)",
+          "oklch(0.250 0.034 322.5)",
+          "oklch(0.360 0.034 322.5)",
+          "oklch(0.470 0.034 322.5)",
+          "oklch(0.590 0.034 322.5)",
+          "oklch(0.710 0.034 322.5)",
+          "oklch(0.830 0.034 322.5)",
+          "oklch(0.950 0.034 322.5)"
+        ]
       },
       "border-light": {
         "role": "neutral",
-        "displayName": "Border Light"
+        "displayName": "Separatore chiaro",
+        "canonical": "oklch(0.922 0.005 325.62)",
+        "tonalRamp": [
+          "oklch(0.150 0.005 325.62)",
+          "oklch(0.250 0.005 325.62)",
+          "oklch(0.360 0.005 325.62)",
+          "oklch(0.470 0.005 325.62)",
+          "oklch(0.590 0.005 325.62)",
+          "oklch(0.710 0.005 325.62)",
+          "oklch(0.830 0.005 325.62)",
+          "oklch(0.950 0.005 325.62)"
+        ]
       },
       "background-dark": {
         "role": "neutral",
-        "displayName": "Background Dark"
+        "displayName": "Canvas scuro",
+        "canonical": "oklch(0.145 0.008 326)",
+        "tonalRamp": [
+          "oklch(0.150 0.008 326)",
+          "oklch(0.250 0.008 326)",
+          "oklch(0.360 0.008 326)",
+          "oklch(0.470 0.008 326)",
+          "oklch(0.590 0.008 326)",
+          "oklch(0.710 0.008 326)",
+          "oklch(0.830 0.008 326)",
+          "oklch(0.950 0.008 326)"
+        ]
       },
       "foreground-dark": {
         "role": "neutral",
-        "displayName": "Foreground Dark"
+        "displayName": "Testo chiaro",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0 0)",
+          "oklch(0.250 0 0)",
+          "oklch(0.360 0 0)",
+          "oklch(0.470 0 0)",
+          "oklch(0.590 0 0)",
+          "oklch(0.710 0 0)",
+          "oklch(0.830 0 0)",
+          "oklch(0.950 0 0)"
+        ]
       },
       "card-dark": {
         "role": "neutral",
-        "displayName": "Card Dark"
+        "displayName": "Scheda scura",
+        "canonical": "oklch(0.212 0.019 322.12)",
+        "tonalRamp": [
+          "oklch(0.150 0.019 322.12)",
+          "oklch(0.250 0.019 322.12)",
+          "oklch(0.360 0.019 322.12)",
+          "oklch(0.470 0.019 322.12)",
+          "oklch(0.590 0.019 322.12)",
+          "oklch(0.710 0.019 322.12)",
+          "oklch(0.830 0.019 322.12)",
+          "oklch(0.950 0.019 322.12)"
+        ]
       },
       "primary-dark": {
         "role": "primary",
-        "displayName": "Primary Dark"
+        "displayName": "Checkpoint magenta scuro",
+        "canonical": "oklch(0.452 0.211 324.591)",
+        "tonalRamp": [
+          "oklch(0.150 0.211 324.591)",
+          "oklch(0.250 0.211 324.591)",
+          "oklch(0.360 0.211 324.591)",
+          "oklch(0.470 0.211 324.591)",
+          "oklch(0.590 0.211 324.591)",
+          "oklch(0.710 0.211 324.591)",
+          "oklch(0.830 0.211 324.591)",
+          "oklch(0.950 0.211 324.591)"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Grigio secondario scuro",
+        "canonical": "oklch(0.274 0.006 286.033)",
+        "tonalRamp": [
+          "oklch(0.150 0.006 286.033)",
+          "oklch(0.250 0.006 286.033)",
+          "oklch(0.360 0.006 286.033)",
+          "oklch(0.470 0.006 286.033)",
+          "oklch(0.590 0.006 286.033)",
+          "oklch(0.710 0.006 286.033)",
+          "oklch(0.830 0.006 286.033)",
+          "oklch(0.950 0.006 286.033)"
+        ]
       },
       "muted-dark": {
         "role": "neutral",
-        "displayName": "Muted Dark"
+        "displayName": "Superficie attenuata scura",
+        "canonical": "oklch(0.263 0.024 320.12)",
+        "tonalRamp": [
+          "oklch(0.150 0.024 320.12)",
+          "oklch(0.250 0.024 320.12)",
+          "oklch(0.360 0.024 320.12)",
+          "oklch(0.470 0.024 320.12)",
+          "oklch(0.590 0.024 320.12)",
+          "oklch(0.710 0.024 320.12)",
+          "oklch(0.830 0.024 320.12)",
+          "oklch(0.950 0.024 320.12)"
+        ]
       },
       "muted-foreground-dark": {
         "role": "neutral",
-        "displayName": "Muted Foreground Dark"
+        "displayName": "Testo attenuato scuro",
+        "canonical": "oklch(0.711 0.019 323.02)",
+        "tonalRamp": [
+          "oklch(0.150 0.019 323.02)",
+          "oklch(0.250 0.019 323.02)",
+          "oklch(0.360 0.019 323.02)",
+          "oklch(0.470 0.019 323.02)",
+          "oklch(0.590 0.019 323.02)",
+          "oklch(0.710 0.019 323.02)",
+          "oklch(0.830 0.019 323.02)",
+          "oklch(0.950 0.019 323.02)"
+        ]
       },
       "border-dark": {
         "role": "neutral",
-        "displayName": "Border Dark"
+        "displayName": "Separatore scuro",
+        "canonical": "oklch(1 0 0 / 10%)",
+        "tonalRamp": [
+          "oklch(0.150 0 0)",
+          "oklch(0.250 0 0)",
+          "oklch(0.360 0 0)",
+          "oklch(0.470 0 0)",
+          "oklch(0.590 0 0)",
+          "oklch(0.710 0 0)",
+          "oklch(0.830 0 0)",
+          "oklch(0.950 0 0)"
+        ]
       }
     },
     "typographyMeta": {
+      "display": {
+        "displayName": "Geist Display",
+        "purpose": "Titoli di pagina e di gioco."
+      },
+      "title": {
+        "displayName": "Geist Title",
+        "purpose": "Titoli di sezioni e card."
+      },
       "body": {
         "displayName": "Geist Body",
-        "purpose": "Body, controls, and metadata."
-      },
-      "heading": {
-        "displayName": "Geist Heading",
-        "purpose": "Page, section, and game titles."
+        "purpose": "Interfaccia, controlli e descrizioni."
       },
       "mono": {
         "displayName": "Geist Mono",
-        "purpose": "Keyboard shortcuts and monospace data."
+        "purpose": "Scorciatoie e dati monospace."
       }
     },
-    "shadows": {},
-    "motion": {},
-    "breakpoints": {}
+    "shadows": [
+      {
+        "name": "subtle",
+        "value": "var(--shadow-sm)",
+        "purpose": "Badge e cursore del tema."
+      },
+      {
+        "name": "overlay",
+        "value": "var(--shadow-xl)",
+        "purpose": "Pannelli sovrapposti e card in hover."
+      }
+    ],
+    "motion": [
+      {
+        "name": "theme-colors",
+        "value": "200ms",
+        "purpose": "Cambio colore del selettore tema."
+      },
+      {
+        "name": "theme-thumb",
+        "value": "250ms cubic-bezier(0.16,1,0.3,1)",
+        "purpose": "Movimento del cursore tema."
+      },
+      {
+        "name": "card-hover",
+        "value": "300ms",
+        "purpose": "Sollevarsi della card; disattivare il movimento ridotto."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
   },
   "components": [
     {
       "name": "Primary Button",
       "kind": "button",
-      "refersTo": "button-primary",
-      "description": "Use the existing shadcn Button with the primary theme token.",
-      "html": "<Button>Aggiungi un gioco</Button>",
-      "css": "Tailwind/shadcn: bg-primary text-primary-foreground"
+      "refersTo": "button-primary-dark",
+      "description": "Azione principale compatta; i token CSS seguono il tema attivo.",
+      "html": "<button class=\"ds-btn-primary\">Aggiungi un gioco</button>",
+      "css": ".ds-btn-primary{height:2rem;padding:0 .625rem;border:1px solid transparent;border-radius:var(--radius-lg);background:var(--primary);color:var(--primary-foreground);font:500 .875rem Geist,sans-serif;transition:background .2s,transform .2s}.ds-btn-primary:hover{background:color-mix(in oklch,var(--primary) 80%,transparent)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "description": "Azione secondaria con bordo sottile.",
+      "html": "<button class=\"ds-btn-outline\">Apri</button>",
+      "css": ".ds-btn-outline{height:2rem;padding:0 .625rem;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--background);color:var(--foreground);font:500 .875rem Geist,sans-serif;transition:background .2s}.ds-btn-outline:hover{background:var(--muted)}.ds-btn-outline:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "description": "Ricerca nell'header per libreria e catalogo.",
+      "html": "<input class=\"ds-search\" placeholder=\"Cerca un gioco o aggiungilo…\" aria-label=\"Cerca un gioco\">",
+      "css": ".ds-search{height:2.5rem;width:100%;padding:0 .75rem;border:1px solid var(--input);border-radius:var(--radius-lg);background:var(--card);color:var(--foreground);font:400 .875rem Geist,sans-serif;transition:border-color .2s,box-shadow .2s}.ds-search::placeholder{color:var(--muted-foreground)}.ds-search:hover{border-color:var(--ring)}.ds-search:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-secondary-dark",
+      "description": "Stato leggibile sopra la cover senza occupare l'accento principale.",
+      "html": "<span class=\"ds-badge\">In corso</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;height:1.25rem;padding:0 .5rem;border-radius:9999px;background:var(--secondary);color:var(--secondary-foreground);font:500 .75rem Geist,sans-serif;white-space:nowrap}.ds-badge:hover{filter:brightness(.95)}.ds-badge:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
       "name": "Library Card",
       "kind": "card",
-      "refersTo": "library-card",
-      "description": "Cover-first game card composed with Tailwind utilities and theme tokens.",
-      "html": "<Link className=\"bg-card text-card-foreground border-border\">...</Link>",
-      "css": "Tailwind utilities in src/components/library-view.tsx"
+      "refersTo": "library-card-dark",
+      "description": "Cover ampia, metadati brevi e voto personale.",
+      "html": "<a class=\"ds-card\" href=\"#\"><div class=\"ds-card-cover\">Copertina</div><div class=\"ds-card-content\"><small>2020 · Action</small><strong>Hades</strong><span>Supergiant Games</span><footer>9/10 · Il tuo voto</footer></div></a>",
+      "css": ".ds-card{display:block;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-xl);background:var(--card);color:var(--card-foreground);text-decoration:none;transition:transform .3s,box-shadow .3s}.ds-card-cover{display:grid;place-items:center;aspect-ratio:1.55;background:var(--secondary);color:var(--secondary-foreground);font:600 1.25rem Geist,sans-serif}.ds-card-content{display:grid;gap:.375rem;padding:1.25rem;font:400 .875rem Geist,sans-serif}.ds-card-content small,.ds-card-content span{color:var(--muted-foreground)}.ds-card-content strong{margin-top:.5rem;font-size:1.5rem;line-height:1.25}.ds-card-content footer{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.75rem}.ds-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}.ds-card:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}@media(prefers-reduced-motion:reduce){.ds-card:hover{transform:none}}"
     },
     {
-      "name": "Global Search",
-      "kind": "input",
-      "description": "Header search for local library and RAWG catalog results.",
-      "html": "<Input aria-label=\"Cerca un gioco nella libreria e nel catalogo RAWG\" />",
-      "css": "Existing shadcn Input with Tailwind layout utilities"
+      "name": "Header Navigation",
+      "kind": "nav",
+      "description": "Marchio e ricerca su una superficie stabile.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">checkpoint</span><span class=\"ds-nav-search\">Cerca un gioco o aggiungilo…</span></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:2rem;padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--background);color:var(--foreground);font-family:Geist,sans-serif}.ds-nav-brand{font-size:1.125rem;font-weight:600;letter-spacing:-.025em}.ds-nav-search{flex:1;max-width:28rem;padding:.625rem;border:1px solid var(--input);border-radius:var(--radius-lg);background:var(--card);color:var(--muted-foreground);font-size:.875rem}.ds-nav-search:hover{border-color:var(--ring)}.ds-nav:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+    },
+    {
+      "name": "Search Result",
+      "kind": "custom",
+      "description": "Riga di risultato compatta con stato hover e focus.",
+      "html": "<button class=\"ds-result\"><span class=\"ds-result-cover\"></span><span><strong>Hades</strong><small>Nella tua libreria</small></span></button>",
+      "css": ".ds-result{display:flex;align-items:center;gap:.75rem;width:100%;min-height:2.75rem;padding:.5rem .75rem;border:0;border-radius:var(--radius-lg);background:var(--popover);color:var(--popover-foreground);text-align:left;font-family:Geist,sans-serif}.ds-result-cover{width:4rem;height:2.75rem;border-radius:var(--radius-md);background:var(--secondary)}.ds-result strong,.ds-result small{display:block}.ds-result strong{font-size:.875rem;font-weight:500}.ds-result small{color:var(--muted-foreground);font-size:.75rem}.ds-result:hover{background:var(--accent)}.ds-result:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     }
   ],
   "narrative": {
-    "northStar": "Archivio curato nel tema originale di Checkpoint",
-    "overview": "Covers lead the library and game detail. The original shadcn light/dark semantic palette and Geist typography provide the interface structure. Page layout and responsive behavior use Tailwind utilities in components.",
+    "northStar": "L'archivio personale dei giochi",
+    "overview": "Checkpoint è un archivio chiaro e calmo: le copertine danno carattere alla collezione, mentre la struttura resta discreta. Titoli, stato e voto si leggono rapidamente. Il magenta segnala le azioni principali e pochi dettagli del marchio; non compete con le immagini dei giochi.\n\nIl simbolo in src/app/icon.svg — una C aperta attorno a un rombo — appare nell'header e come icona del sito. Il nome nell'header è testo Geist, così eredita il colore del tema. Il tema iniziale è scuro; il selettore permette di passare al tema chiaro. Il brandkit in docs/brand/checkpoint-brandkit.png documenta il concept, ma le sue schermate sono illustrative: l'implementazione corrente è la fonte per layout e componenti.",
     "keyCharacteristics": [
-      "Cover-first gallery and game detail.",
-      "Original magenta primary accent and semantic light/dark tokens.",
-      "Geist for headings and body; Geist Mono only where appropriate.",
-      "Global search combines library entries and RAWG results."
+      "Copertine ampie e metadati personali facili da scandire.",
+      "Palette semantica chiara e scura, con un solo accento magenta.",
+      "Controlli sobri, angoli arrotondati e interazioni precise.",
+      "Geist per interfaccia e titoli; Geist Mono solo dove serve un monospace."
     ],
     "rules": [
       {
-        "name": "Theme source",
-        "body": "Keep palette values in src/styles/globals.css and consume semantic shadcn tokens through Tailwind utilities.",
+        "name": "The Semantic Color Rule",
+        "body": "Aggiungi o modifica i colori in src/styles/globals.css; nei componenti usa i ruoli semantici, non valori locali.",
         "section": "colors"
       },
       {
-        "name": "Typography source",
-        "body": "Use the original Geist and Geist Mono configuration; do not introduce a second display font.",
+        "name": "The One Typeface Rule",
+        "body": "Usa Geist per titoli e controlli; riserva Geist Mono a scorciatoie e dati. Non introdurre un font display separato.",
         "section": "typography"
       },
       {
-        "name": "Styling source",
-        "body": "Compose pages with Tailwind utility classes and existing shadcn components; do not add page classes to globals.css.",
+        "name": "The Cover First Rule",
+        "body": "Lascia alle cover spazio sufficiente per identificare i giochi; mantieni stato, titolo e voto leggibili anche senza immagine.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lift on Interaction Rule",
+        "body": "Tieni le card ferme a riposo; usa l'elevazione per hover e sovrapposizioni, rispettando prefers-reduced-motion per il movimento.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Component Source Rule",
+        "body": "Componi layout e stati con utility Tailwind nei componenti; usa i controlli shadcn già presenti. globals.css resta dedicato a token e stili base.",
         "section": "components"
       }
     ],
     "dos": [
-      "Use the existing theme tokens in light and dark mode.",
-      "Use Tailwind utilities for page layout and responsive states.",
-      "Use the installed shadcn components for controls."
+      "**Do** usa i token semantici per entrambi i temi e verifica il contrasto nelle superfici scure.",
+      "**Do** lascia che le cover RAWG portino varietà cromatica, mantenendo il fallback leggibile.",
+      "**Do** mantieni visibili hover, focus, errori e stati vuoti nei controlli condivisi.",
+      "**Do** impila griglie e colonne ai breakpoint già usati quando lo spazio si restringe."
     ],
     "donts": [
-      "Don't add custom page selectors to globals.css.",
-      "Don't introduce a replacement palette or display font."
+      "**Don't** aggiungere selettori di pagina a src/styles/globals.css o colori esadecimali arbitrari nei componenti.",
+      "**Don't** sostituire Geist con un font editoriale o usare Geist Mono come font decorativo.",
+      "**Don't** trattare le schermate del brandkit o gli screenshot storici come fonte più recente del codice."
     ]
   }
 }
