@@ -16,6 +16,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { GameCover } from "~/components/game-cover";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Spinner } from "~/components/ui/spinner";
 import {
   InputGroup,
   InputGroupAddon,
@@ -51,6 +54,7 @@ export function GlobalSearch() {
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const adding = useRef(false);
+  const catalogRetryFocused = useRef(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -103,6 +107,12 @@ export function GlobalSearch() {
     enabled: open && debouncedQuery.length >= 2,
     staleTime: 1000 * 60 * 5,
   });
+  useEffect(() => {
+    if (catalog.isSuccess && catalogRetryFocused.current) {
+      catalogRetryFocused.current = false;
+      input.current?.focus();
+    }
+  }, [catalog.isSuccess]);
   const add = useMutation({
     mutationFn: async ({
       game,
@@ -161,7 +171,12 @@ export function GlobalSearch() {
     ...catalogMatches.map((game) => ({ kind: "catalog" as const, game })),
   ];
   const selectedIndex = activeIndex < results.length ? activeIndex : -1;
-  const catalogPending = query.trim() !== debouncedQuery || catalog.isPending;
+  const catalogPending =
+    query.trim() !== debouncedQuery ||
+    (catalog.isPending && !catalog.isFetched);
+  const catalogRecovery =
+    !catalogPending &&
+    (catalog.isError || (catalog.isLoading && catalog.isFetched));
   const showPanel = open && query.trim().length > 0;
 
   const activateResult = (result: SearchResult) => {
@@ -286,122 +301,56 @@ export function GlobalSearch() {
         </div>
       )}
       {showPanel && (
-        <section
-          id="global-search-results"
-          role="listbox"
-          className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(70vh,620px)] overflow-y-auto rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-xl"
-          aria-label="Risultati di ricerca"
-        >
-          {library.isError && (
-            <p className="px-3 py-3 text-sm text-muted-foreground">
-              La libreria non è disponibile. Riprova tra poco.
-            </p>
-          )}
-          {library.isPending && (
-            <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-              <LoaderCircleIcon
-                className="animate-spin"
-                size={16}
-                aria-hidden="true"
-              />
-              Cerco nella libreria…
-            </p>
-          )}
-          {libraryMatches.length > 0 && (
-            <div
-              role="group"
-              aria-labelledby="library-search-heading"
-              className="py-1"
-            >
-              <h2
-                id="library-search-heading"
-                className="px-3 py-2 text-xs font-semibold text-muted-foreground"
+        <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(70vh,620px)] overflow-y-auto rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-xl">
+          <section
+            id="global-search-results"
+            role="listbox"
+            aria-label="Risultati di ricerca"
+          >
+            {library.isError && (
+              <p className="px-3 py-3 text-sm text-muted-foreground">
+                La libreria non è disponibile. Riprova tra poco.
+              </p>
+            )}
+            {library.isPending && (
+              <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <LoaderCircleIcon
+                  className="animate-spin"
+                  size={16}
+                  aria-hidden="true"
+                />
+                Cerco nella libreria…
+              </p>
+            )}
+            {libraryMatches.length > 0 && (
+              <div
+                role="group"
+                aria-labelledby="library-search-heading"
+                className="py-1"
               >
-                Nella tua libreria · Apri il dettaglio
-              </h2>
-              {libraryMatches.map((game, index) => (
-                <button
-                  key={game.id}
-                  id={`global-search-option-${index}`}
-                  type="button"
-                  role="option"
-                  aria-selected={selectedIndex === index}
-                  aria-label={`Apri ${[game.title, game.releaseDate?.slice(0, 4), game.developers[0]].filter(Boolean).join(", ")} nella tua libreria`}
-                  disabled={add.isPending}
-                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-selected:bg-accent"
-                  onClick={() => activateResult({ kind: "library", game })}
+                <h2
+                  id="library-search-heading"
+                  className="px-3 py-2 text-xs font-semibold text-muted-foreground"
                 >
-                  <span className="relative aspect-3/2 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
-                    <GameCover
-                      title={game.title}
-                      coverUrl={game.coverUrl}
-                      rawgId={game.rawgId}
-                      sizes="128px"
-                    />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <strong className="truncate text-sm font-medium">
-                      {game.title}
-                    </strong>
-                    <small className="truncate text-xs text-muted-foreground">
-                      {[game.releaseDate?.slice(0, 4), game.developers[0]]
-                        .filter(Boolean)
-                        .join(" · ") || "Già nella tua libreria"}
-                    </small>
-                    <span className="flex items-center gap-1 text-xs font-medium text-foreground">
-                      Apri nella tua libreria{" "}
-                      <ArrowUpRightIcon size={14} aria-hidden="true" />
-                    </span>
-                  </span>
-                  <Kbd aria-hidden="true" className="ml-auto shrink-0">
-                    ⏎
-                  </Kbd>
-                </button>
-              ))}
-            </div>
-          )}
-          {query.trim().length >= 2 && library.isSuccess && (
-            <div
-              role="group"
-              aria-labelledby="catalog-search-heading"
-              className={cn("border-border py-1", {
-                "border-t": libraryMatches.length > 0,
-              })}
-            >
-              <h2
-                id="catalog-search-heading"
-                className="px-3 py-2 text-xs font-semibold text-muted-foreground"
-              >
-                Catalogo RAWG · Aggiungi alla libreria
-              </h2>
-              {catalogPending ? (
-                <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-                  <LoaderCircleIcon className="animate-spin" size={16} /> Cerco
-                  nel catalogo…
-                </p>
-              ) : catalog.isError ? (
-                <p className="px-3 py-3 text-sm text-muted-foreground">
-                  Catalogo non disponibile. Riprova tra poco.
-                </p>
-              ) : catalogMatches.length ? (
-                catalogMatches.map((game, index) => (
+                  Nella tua libreria · Apri il dettaglio
+                </h2>
+                {libraryMatches.map((game, index) => (
                   <button
                     key={game.id}
-                    id={`global-search-option-${libraryMatches.length + index}`}
+                    id={`global-search-option-${index}`}
                     type="button"
                     role="option"
-                    aria-selected={
-                      selectedIndex === libraryMatches.length + index
-                    }
-                    aria-label={`Aggiungi ${[game.title, game.releaseDate?.slice(0, 4), ...game.genres.slice(0, 2)].filter(Boolean).join(", ")} alla libreria dal catalogo RAWG`}
+                    aria-selected={selectedIndex === index}
+                    aria-label={`Apri ${[game.title, game.releaseDate?.slice(0, 4), game.developers[0]].filter(Boolean).join(", ")} nella tua libreria`}
                     disabled={add.isPending}
                     className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-selected:bg-accent"
-                    onClick={() => activateResult({ kind: "catalog", game })}
+                    onClick={() => activateResult({ kind: "library", game })}
                   >
                     <span className="relative aspect-3/2 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
                       <GameCover
                         title={game.title}
                         coverUrl={game.coverUrl}
+                        rawgId={game.rawgId}
                         sizes="128px"
                       />
                     </span>
@@ -410,63 +359,159 @@ export function GlobalSearch() {
                         {game.title}
                       </strong>
                       <small className="truncate text-xs text-muted-foreground">
-                        {[
-                          game.releaseDate?.slice(0, 4),
-                          ...game.genres.slice(0, 2),
-                        ]
+                        {[game.releaseDate?.slice(0, 4), game.developers[0]]
                           .filter(Boolean)
-                          .join(" · ") || "Data e genere non disponibili"}
+                          .join(" · ") || "Già nella tua libreria"}
                       </small>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                        {add.isPending && add.variables?.game.id === game.id ? (
-                          <>
-                            <LoaderCircleIcon
-                              size={14}
-                              className="animate-spin"
-                              aria-hidden="true"
-                            />{" "}
-                            Aggiunta in corso…
-                          </>
-                        ) : (
-                          <>
-                            Aggiungi alla libreria{" "}
-                            <PlusIcon size={14} aria-hidden="true" />
-                          </>
-                        )}
+                      <span className="flex items-center gap-1 text-xs font-medium text-foreground">
+                        Apri nella tua libreria{" "}
+                        <ArrowUpRightIcon size={14} aria-hidden="true" />
                       </span>
                     </span>
                     <Kbd aria-hidden="true" className="ml-auto shrink-0">
                       ⏎
                     </Kbd>
                   </button>
-                ))
-              ) : (
-                <p className="px-3 py-3 text-sm text-muted-foreground">
-                  Nessun gioco trovato nel catalogo.
-                </p>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
+            {query.trim().length >= 2 && library.isSuccess && (
+              <div
+                role="group"
+                aria-labelledby="catalog-search-heading"
+                className={cn("border-border py-1", {
+                  "border-t": libraryMatches.length > 0,
+                })}
+              >
+                <h2
+                  id="catalog-search-heading"
+                  className="px-3 py-2 text-xs font-semibold text-muted-foreground"
+                >
+                  Catalogo RAWG · Aggiungi alla libreria
+                </h2>
+                {catalogPending ? (
+                  <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                    <LoaderCircleIcon className="animate-spin" size={16} />{" "}
+                    Cerco nel catalogo…
+                  </p>
+                ) : catalogRecovery ? null : catalogMatches.length ? (
+                  catalogMatches.map((game, index) => (
+                    <button
+                      key={game.id}
+                      id={`global-search-option-${libraryMatches.length + index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={
+                        selectedIndex === libraryMatches.length + index
+                      }
+                      aria-label={`Aggiungi ${[game.title, game.releaseDate?.slice(0, 4), ...game.genres.slice(0, 2)].filter(Boolean).join(", ")} alla libreria dal catalogo RAWG`}
+                      disabled={add.isPending}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-selected:bg-accent"
+                      onClick={() => activateResult({ kind: "catalog", game })}
+                    >
+                      <span className="relative aspect-3/2 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+                        <GameCover
+                          title={game.title}
+                          coverUrl={game.coverUrl}
+                          sizes="128px"
+                        />
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <strong className="truncate text-sm font-medium">
+                          {game.title}
+                        </strong>
+                        <small className="truncate text-xs text-muted-foreground">
+                          {[
+                            game.releaseDate?.slice(0, 4),
+                            ...game.genres.slice(0, 2),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "Data e genere non disponibili"}
+                        </small>
+                        <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                          {add.isPending &&
+                          add.variables?.game.id === game.id ? (
+                            <>
+                              <LoaderCircleIcon
+                                size={14}
+                                className="animate-spin"
+                                aria-hidden="true"
+                              />{" "}
+                              Aggiunta in corso…
+                            </>
+                          ) : (
+                            <>
+                              Aggiungi alla libreria{" "}
+                              <PlusIcon size={14} aria-hidden="true" />
+                            </>
+                          )}
+                        </span>
+                      </span>
+                      <Kbd aria-hidden="true" className="ml-auto shrink-0">
+                        ⏎
+                      </Kbd>
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-3 py-3 text-sm text-muted-foreground">
+                    Nessun gioco trovato nel catalogo.
+                  </p>
+                )}
+              </div>
+            )}
+            {query.trim().length < 2 && (
+              <p className="px-3 py-3 text-sm text-muted-foreground">
+                Scrivi almeno 2 caratteri per cercare anche nel catalogo.
+              </p>
+            )}
+            {add.isPending && (
+              <p
+                role="status"
+                className="px-3 py-3 text-sm text-muted-foreground"
+              >
+                Aggiungo {add.variables?.game.title} alla libreria…
+              </p>
+            )}
+            {add.isError && (
+              <p role="alert" className="px-3 py-3 text-sm text-destructive">
+                Non siamo riusciti ad aggiungere {add.variables?.game.title}.
+                Riprova scegliendo il risultato; la ricerca è ancora qui.
+              </p>
+            )}
+          </section>
+          {query.trim().length >= 2 && library.isSuccess && catalogRecovery && (
+            <Alert variant="destructive">
+              <AlertTitle>Catalogo non disponibile</AlertTitle>
+              <AlertDescription>
+                Non è stato possibile cercare i giochi nel catalogo. Riprova la
+                ricerca corrente.
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-disabled={catalog.isFetching}
+                  onFocus={() => {
+                    catalogRetryFocused.current = true;
+                  }}
+                  onBlur={() => {
+                    catalogRetryFocused.current = false;
+                  }}
+                  onClick={() => {
+                    if (catalog.isFetching) return;
+                    void catalog.refetch();
+                  }}
+                >
+                  {catalog.isFetching && (
+                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                  )}
+                  {catalog.isFetching ? "Riprovo…" : "Riprova"}
+                </Button>
+                <output className="sr-only" aria-label="Ricerca nel catalogo">
+                  {catalog.isFetching ? "Riprovo…" : "Ricerca non riuscita"}
+                </output>
+              </AlertDescription>
+            </Alert>
           )}
-          {query.trim().length < 2 && (
-            <p className="px-3 py-3 text-sm text-muted-foreground">
-              Scrivi almeno 2 caratteri per cercare anche nel catalogo.
-            </p>
-          )}
-          {add.isPending && (
-            <p
-              role="status"
-              className="px-3 py-3 text-sm text-muted-foreground"
-            >
-              Aggiungo {add.variables?.game.title} alla libreria…
-            </p>
-          )}
-          {add.isError && (
-            <p role="alert" className="px-3 py-3 text-sm text-destructive">
-              Non siamo riusciti ad aggiungere {add.variables?.game.title}.
-              Riprova scegliendo il risultato; la ricerca è ancora qui.
-            </p>
-          )}
-        </section>
+        </div>
       )}
     </div>
   );

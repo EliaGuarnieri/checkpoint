@@ -66,7 +66,8 @@ function renderLibrary(
     json: () => Promise<unknown>;
   }> = Promise.resolve({ ok: true, json: async () => entries }),
 ) {
-  vi.stubGlobal("fetch", vi.fn().mockReturnValue(response));
+  const fetchMock = vi.fn().mockReturnValue(response);
+  vi.stubGlobal("fetch", fetchMock);
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -75,6 +76,7 @@ function renderLibrary(
       <LibraryView />
     </QueryClientProvider>,
   );
+  return fetchMock;
 }
 
 function visibleLibraryEntryIds() {
@@ -89,6 +91,56 @@ function statusCount(label: string) {
 }
 
 describe("library filters", () => {
+  it("retries a failed load by keyboard without losing filters or changing entries", async () => {
+    const user = userEvent.setup();
+    const fetchMock = renderLibrary(Promise.reject(new Error("Unavailable")));
+    await screen.findByText("Libreria non disponibile");
+    await user.click(screen.getByRole("button", { name: /^In corso/ }));
+    await user.click(screen.getByText("Filtri", { selector: "summary" }));
+    await user.type(screen.getByRole("textbox", { name: "Titolo" }), "Hades");
+    await user.type(
+      screen.getByRole("textbox", { name: "Genere" }),
+      "Roguelike",
+    );
+    let finishRetry: (() => void) | undefined;
+    fetchMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRetry = () => resolve({ ok: true, json: async () => entries });
+      }),
+    );
+    const retry = screen.getByRole("button", { name: "Riprova" });
+    retry.focus();
+    await user.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("status", { name: "Caricamento della libreria" }),
+    ).toHaveProperty("textContent", "Riprovo…");
+    expect(
+      screen
+        .getByRole("button", { name: "Riprovo…" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    await user.keyboard("{Enter}");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    if (!finishRetry) throw new Error("Retry was not ready");
+    finishRetry();
+    await screen.findByRole("link", { name: /Hades/ });
+    expect(screen.queryByText("Libreria non disponibile")).toBeNull();
+    expect(visibleLibraryEntryIds()).toEqual(["hades"]);
+    expect(screen.getByRole("textbox", { name: "Titolo" })).toHaveProperty(
+      "value",
+      "Hades",
+    );
+    expect(screen.getByText("Stato: In corso")).toBeTruthy();
+    expect(screen.getByText("Genere: Roguelike")).toBeTruthy();
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "La collezione" }),
+    );
+    expect(fetchMock.mock.calls).toEqual([
+      ["/api/library", undefined],
+      ["/api/library", undefined],
+    ]);
+  });
+
   it("counts each section after the other criteria and keeps counts stable when switching section", async () => {
     renderLibrary();
     await screen.findByRole("link", { name: /Hades/ });

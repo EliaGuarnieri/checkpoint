@@ -80,12 +80,16 @@ function renderSearch(
     ok: true,
     json: async () => ({ added: true, id: "entry-2" }),
   }),
+  search: () => Promise<MockResponse> = async () => ({
+    ok: true,
+    json: async () => catalogGames,
+  }),
 ) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === "POST") return post();
       if (typeof input === "string" && input.startsWith("/api/catalog/search"))
-        return { ok: true, json: async () => catalogGames };
+        return search();
       return { ok: true, json: async () => [libraryEntry] };
     },
   );
@@ -108,6 +112,72 @@ afterEach(() => {
 });
 
 describe("global search", () => {
+  it("retries the current catalog search by keyboard and only adds on selection", async () => {
+    const user = userEvent.setup();
+    let attempts = 0;
+    let finishRetry: (() => void) | undefined;
+    const pendingRetry = new Promise<MockResponse>((resolve) => {
+      finishRetry = () => resolve({ ok: true, json: async () => catalogGames });
+    });
+    const fetchMock = renderSearch(undefined, async () => {
+      attempts += 1;
+      return attempts === 1
+        ? {
+            ok: false,
+            status: 503,
+            json: async () => ({ error: "Unavailable" }),
+          }
+        : pendingRetry;
+    });
+    const input = screen.getByRole("combobox");
+    await user.type(input, "Hades");
+    await screen.findByText(/Catalogo non disponibile/);
+    // Tab follows the existing library result to the recovery action.
+    await user.tab();
+    await user.tab();
+    expect(document.activeElement).toBe(
+      screen.getByRole("option", { name: /Apri Hades/ }),
+    );
+    await user.tab();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Riprova" }),
+    );
+    await user.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("status", { name: "Ricerca nel catalogo" }),
+    ).toHaveProperty("textContent", "Riprovo…");
+    expect(
+      screen
+        .getByRole("button", { name: "Riprovo…" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    await user.keyboard("{Enter}");
+    expect(attempts).toBe(2);
+    expect(input).toHaveProperty("value", "Hades");
+    if (!finishRetry) throw new Error("Retry was not ready");
+    finishRetry();
+    await screen.findByRole("option", {
+      name: /Aggiungi Hades, 1998, Strategy/,
+    });
+    expect(screen.queryByText(/Catalogo non disponibile/)).toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(
+      fetchMock.mock.calls
+        .filter(
+          ([url]) =>
+            typeof url === "string" && url.startsWith("/api/catalog/search"),
+        )
+        .map(([url]) => url),
+    ).toEqual([
+      "/api/catalog/search?query=Hades",
+      "/api/catalog/search?query=Hades",
+    ]);
+    expect(
+      fetchMock.mock.calls.filter(([, init]) => init?.method === "POST"),
+    ).toHaveLength(0);
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it("explains where to add a game on focus and distinguishes homonymous results", async () => {
     const user = userEvent.setup();
     renderSearch();

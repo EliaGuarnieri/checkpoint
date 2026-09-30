@@ -9,7 +9,7 @@ import {
   SlidersHorizontalIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { GameCover } from "~/components/game-cover";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Spinner } from "~/components/ui/spinner";
 import { Slider } from "~/components/ui/slider";
 import { fetchJson } from "~/lib/api";
 import {
@@ -60,6 +61,8 @@ const sortLabels: Record<Sort, string> = {
 };
 
 export function LibraryView() {
+  const retryFocused = useRef(false);
+  const collectionHeading = useRef<HTMLHeadingElement>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<TrackingStatus | "all">("all");
   const [genre, setGenre] = useState("");
@@ -71,6 +74,12 @@ export function LibraryView() {
     queryKey: ["library", "all"],
     queryFn: () => fetchJson(LibraryResponse, "/api/library"),
   });
+  useEffect(() => {
+    if (library.isSuccess && retryFocused.current) {
+      retryFocused.current = false;
+      collectionHeading.current?.focus();
+    }
+  }, [library.isSuccess]);
   const entriesMatchingNonStatusCriteria = useMemo(
     () =>
       filterLibraryGames(library.data ?? [], {
@@ -138,7 +147,11 @@ export function LibraryView() {
       <section className="space-y-4" aria-label="Esplora la libreria">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-baseline gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2
+              ref={collectionHeading}
+              tabIndex={-1}
+              className="text-2xl font-semibold tracking-tight focus-visible:ring-2 focus-visible:ring-ring sm:text-3xl"
+            >
               La collezione
             </h2>
             <span className="text-sm text-muted-foreground" aria-live="polite">
@@ -304,12 +317,38 @@ export function LibraryView() {
           </div>
         )}
 
-        {library.isError && (
+        {(library.isError || (library.isLoading && library.isFetched)) && (
           <Alert variant="destructive">
             <AlertTitle>Libreria non disponibile</AlertTitle>
             <AlertDescription>
-              Non è stato possibile caricare i giochi. Ricarica la pagina per
-              riprovare.
+              Non è stato possibile caricare i giochi. Riprova qui senza perdere
+              i filtri.
+              <Button
+                onFocus={() => {
+                  retryFocused.current = true;
+                }}
+                onBlur={() => {
+                  retryFocused.current = false;
+                }}
+                type="button"
+                variant="outline"
+                aria-disabled={library.isFetching}
+                onClick={() => {
+                  if (library.isFetching) return;
+                  void library.refetch();
+                }}
+              >
+                {library.isFetching && (
+                  <Spinner data-icon="inline-start" aria-hidden="true" />
+                )}
+                {library.isFetching ? "Riprovo…" : "Riprova"}
+              </Button>
+              <output
+                className="sr-only"
+                aria-label="Caricamento della libreria"
+              >
+                {library.isFetching ? "Riprovo…" : "Caricamento non riuscito"}
+              </output>
             </AlertDescription>
           </Alert>
         )}
