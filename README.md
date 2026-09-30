@@ -6,7 +6,7 @@ Il progetto è un esercizio su [Effect](https://effect.website/). Le chiamate al
 
 ## Sviluppo locale
 
-L'app usa il catalogo RAWG e una libreria in PostgreSQL locale. Per cercare giochi dalla pagina `/library` serve una chiave RAWG in `.env`. I test possono usare un catalogo fake deterministico senza credenziali o richieste esterne.
+L'app usa il catalogo RAWG e una libreria su Supabase. Per cercare giochi dalla pagina `/library` serve una chiave RAWG in `.env`. Il test didattico usa il repository in memoria senza credenziali o richieste esterne.
 
 ![Libreria di Checkpoint con copertine e filtri](docs/screenshots/library.png)
 
@@ -14,15 +14,17 @@ L'app usa il catalogo RAWG e una libreria in PostgreSQL locale. Per cercare gioc
 
 ## Avvio rapido
 
-Servono Node.js 20 o successivo, pnpm e Docker con Compose.
+Servono Node.js 22, pnpm e un progetto Supabase.
 
 ```bash
 pnpm install --frozen-lockfile
+cp .env.example .env
+# Compila .env con le connessioni Supabase e RAWG_API_KEY.
 pnpm setup
 pnpm dev
 ```
 
-Inserisci `RAWG_API_KEY` in `.env`, poi apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` da `.env.example`, avvia PostgreSQL, applica le migration e carica cinque voci dimostrative. Il seed è ripetibile.
+Configura le connessioni come descritto sotto, poi apri [http://localhost:3000](http://localhost:3000). `pnpm setup` verifica la connessione a Supabase con una lettura della libreria. Le migration si applicano esplicitamente con `pnpm db:migrate`; il setup non inserisce dati dimostrativi.
 
 ```bash
 pnpm test
@@ -34,22 +36,22 @@ pnpm build
 
 ## Database Supabase
 
-L'app usa Drizzle attraverso il `LibraryRepository` di Effect anche con Supabase. Per eseguirla su Vercel o su un altro runtime serverless:
+L'app usa Supabase anche durante lo sviluppo locale. Drizzle accede al database attraverso il `LibraryRepository` di Effect. Per configurare le connessioni:
 
 1. Nel progetto Supabase, apri **Connect** e copia l'URI del **Transaction pooler** (porta `6543`). Sostituisci il segnaposto della password e codifica i caratteri speciali della password nell'URI.
 2. Imposta l'URI come `DATABASE_URL` tra le variabili **server** dell'hosting. Non usare il prefisso `NEXT_PUBLIC_`: la connessione al database avviene solo nei Route Handler.
-3. Crea `.env.supabase.local` nel repository con `DATABASE_URL` uguale all'URI del Transaction pooler e `DATABASE_MIGRATION_URL` uguale all'URI della **Direct connection**. Il file è ignorato da Git e non cambia il database usato da `pnpm dev`. Se la rete locale non supporta IPv6, usa l'URI del **Session pooler** (porta `5432`) per `DATABASE_MIGRATION_URL`.
-4. Prima di avviare l'app ospitata, esegui `pnpm db:migrate:supabase` e poi `pnpm db:check:supabase`. Il primo comando applica le migration con TLS verificato; il secondo legge la libreria tramite il `LibraryRepository` live. Non eseguire `pnpm db:seed` sul database remoto se vuoi iniziare senza i dati demo.
+3. Configura `.env` nel repository con `DATABASE_URL` uguale all'URI del Transaction pooler e `DATABASE_MIGRATION_URL` uguale all'URI della **Direct connection**. Il file è ignorato da Git ed è usato sia da `pnpm dev` sia dagli script Supabase. Se la rete locale non supporta IPv6, usa l'URI del **Session pooler** (porta `5432`) per `DATABASE_MIGRATION_URL`.
+4. Su un nuovo database, esegui `pnpm db:migrate` e poi `pnpm db:check:supabase`. `pnpm db:migrate:supabase` è un alias dello stesso comando di migrazione. Il primo comando applica le migration con TLS verificato; il secondo legge la libreria tramite il `LibraryRepository` live.
 
 Il client limita a una connessione per istanza quando l'host è Supabase. Verifica la CA e il nome host usando il certificato pubblico `certs/supabase-ca.crt`, scaricato da **Database → Settings → Download certificate**; aggiorna questo file se Supabase ruota la CA. Il driver `pg` permette di usare il pooler transaction senza il pipelining di Postgres.js. La migration `0002_enable_rls` abilita RLS senza policy sulle sei tabelle dell'app: i ruoli `anon` e `authenticated` non possono leggere o modificare le voci personali, mentre la connessione PostgreSQL del server continua a funzionare. [Connessioni Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Sicurezza della Data API](https://supabase.com/docs/guides/api/securing-your-api).
 
-Lo sviluppo locale continua a usare `DATABASE_URL` in `.env` e PostgreSQL in Docker. `pnpm setup` forza il database locale anche se hai una variabile di migrazione remota nell'ambiente. I test unitari usano il repository in memoria e partono con `pnpm test`; `pnpm test:db` avvia un PostgreSQL di test separato sulla porta `5433`, applica le migration e verifica il repository live. Nessuno dei due comandi di test usa Supabase.
+Il progetto non richiede PostgreSQL locale o Docker. App e comandi database usano Supabase; gli script verificano che le URI puntino a Supabase e che le due connessioni di migrazione appartengano allo stesso progetto. Il test didattico usa il repository in memoria e parte con `pnpm test`, senza database o servizi esterni.
 
 Le variabili dell'app sono descritte in `src/infrastructure/config.ts` con `Config` di Effect:
 
 | Variabile                | Regola                                                                                                                                                           |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Obbligatoria alla prima operazione del repository live; punta a PostgreSQL locale nello sviluppo e al Transaction pooler Supabase nell'app ospitata.             |
+| `DATABASE_URL`           | Obbligatoria alla prima operazione del repository live; punta al Transaction pooler Supabase sia nello sviluppo sia nell'app ospitata.                           |
 | `DATABASE_MIGRATION_URL` | Usata da Drizzle Kit per le migration; se manca, usa `DATABASE_URL`. Lo script Supabase la richiede esplicitamente per evitare migration sul Transaction pooler. |
 | `RAWG_API_KEY`           | Obbligatoria e non vuota nell'app: il catalogo live usa sempre RAWG.                                                                                             |
 
@@ -116,7 +118,7 @@ L'importazione Steam e il tracciamento delle fonti di possesso sono stati rimoss
 
 ## Test ed esercizi
 
-I test coprono il repository in memoria e il confine HTTP. `pnpm check` esegue lint, typecheck e test. Le sei [schede di studio](exercises/README.md) propongono cambiamenti progressivi nei flussi di catalogo, libreria, configurazione e chiamate esterne.
+Resta un solo file di test, `src/modules/library/repository-memory.test.ts`, come esempio per studiare Effect. Mostra la composizione con `Effect.gen`, la dipendenza dichiarata tramite `Context.Tag`, la fornitura del repository con `Effect.provide`, gli errori tipizzati con `Effect.flip` e l'isolamento dello stato tra istanze del `Layer`. La suite non cerca di coprire tutta l'applicazione. `pnpm check` esegue lint, typecheck e test. Le sei [schede di studio](exercises/README.md) propongono cambiamenti progressivi nei flussi di catalogo, libreria, configurazione e chiamate esterne.
 
 ## Uso dell'AI
 

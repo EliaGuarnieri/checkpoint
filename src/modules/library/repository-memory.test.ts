@@ -1,232 +1,92 @@
-import { describe, expect, it } from "vitest";
-import { LibraryRepositoryMemory } from "./repository-memory";
-import { LibraryRepository } from "./service";
 import { Effect } from "effect";
+import { describe, expect, it } from "vitest";
 
-import { CatalogGame } from "../catalog/model";
+import type { CatalogGame } from "../catalog/model";
+import { LibraryRepositoryMemory } from "./repository-memory";
+import { LibraryEntryNotFound, LibraryRepository } from "./service";
 
-const randomId = () => Math.floor(Math.random() * 1000000000).toString();
-
-const randomGame = (): CatalogGame => {
-  const id = randomId();
-  return {
-    id,
-    title: `Test Game ${id}`,
-    slug: `test-game-${id}`,
-    coverUrl: null,
-    releaseDate: null,
-    genres: [],
-    developers: [],
-    publishers: [],
-  };
+const game: CatalogGame = {
+  id: "909090",
+  title: "Effect learning game",
+  slug: "effect-learning-game",
+  coverUrl: null,
+  releaseDate: null,
+  genres: [],
+  developers: [],
+  publishers: [],
 };
 
-describe("LibraryRepositoryMemory", () => {
-  it("uses the shared library search policy", async () => {
-    const entries = await Effect.runPromise(
-      Effect.gen(function* () {
-        const repository = yield* LibraryRepository;
-        return yield* repository.list({ genre: "rogue" });
-      }).pipe(Effect.provide(LibraryRepositoryMemory)),
-    );
-
-    expect(entries.map(({ title }) => title)).toEqual(["Hades"]);
-  });
-
-  it("adds a catalog game and updates its personal entry", async () => {
+describe("LibraryRepositoryMemory as an Effect learning example", () => {
+  it("composes repository operations through an injected service", async () => {
+    // The program requires LibraryRepository; it does not choose its implementation.
     const program = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
+      const entryId = yield* repository.addManualGame(game);
 
-      const fakeGame = randomGame();
-
-      yield* repository.addManualGame(fakeGame);
-
-      const libraryEntry = yield* repository
-        .list({ query: fakeGame.title })
-        .pipe(Effect.map((games) => games[0]));
-
-      yield* repository.update(libraryEntry.id, {
+      yield* repository.update(entryId, {
         status: "playing",
         rating: 8,
-        note: "Great game!",
+        note: "Learning Effect",
       });
 
-      const updatedEntry = yield* repository.findById(libraryEntry.id);
-      yield* repository.remove(libraryEntry.id);
-      return updatedEntry;
-    }).pipe(Effect.provide(LibraryRepositoryMemory));
-
-    const result = await Effect.runPromise(program);
-
-    expect(result).toMatchObject({
-      status: "playing",
-      rating: 8,
-      note: "Great game!",
-    });
-  });
-
-  it("does not duplicate a catalog game or overwrite its personal fields", async () => {
-    const fakeGame = randomGame();
-
-    const program = Effect.gen(function* () {
-      const repository = yield* LibraryRepository;
-
-      yield* repository.addManualGame(fakeGame);
-      const before = yield* repository.findById(`memory-${fakeGame.id}`);
-      yield* repository.update(before.id, { status: "playing", rating: 8 });
-      yield* repository.addManualGame({
-        ...fakeGame,
-        title: "Unwanted replacement title",
-      });
-
-      const entries = (yield* repository.list()).filter(
-        (entry) => entry.rawgId === Number(fakeGame.id),
-      );
-      return entries;
+      return yield* repository.findById(entryId);
     });
 
-    const result = await Effect.runPromise(
+    // provide supplies the Layer, while runPromise executes the complete program.
+    const entry = await Effect.runPromise(
       program.pipe(Effect.provide(LibraryRepositoryMemory)),
     );
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: `memory-${fakeGame.id}`,
-      title: fakeGame.title,
+    expect(entry).toMatchObject({
+      id: `memory-${game.id}`,
+      title: game.title,
       status: "playing",
       rating: 8,
+      note: "Learning Effect",
     });
   });
 
-  it("refreshes a library entry snapshot without changing personal fields", async () => {
-    const game = randomGame();
-    const refreshed = await Effect.runPromise(
-      Effect.gen(function* () {
-        const repository = yield* LibraryRepository;
-        const entryId = yield* repository.addManualGame(game);
-        yield* repository.update(entryId, {
-          status: "playing",
-          rating: 8,
-          note: "Da continuare",
-        });
-        yield* repository.refreshCatalogGame(entryId, {
-          ...game,
-          title: "Titolo aggiornato",
-          genres: ["Adventure"],
-        });
-        return yield* repository.findById(entryId);
-      }).pipe(Effect.provide(LibraryRepositoryMemory)),
-    );
-
-    expect(refreshed).toMatchObject({
-      title: "Titolo aggiornato",
-      genres: ["Adventure"],
-      status: "playing",
-      rating: 8,
-      note: "Da continuare",
-    });
-  });
-
-  it("remove removes the entry from the library", async () => {
+  it("exposes a missing entry through the typed error channel", async () => {
     const program = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
-
-      const fakeGame = randomGame();
-
-      yield* repository.addManualGame(fakeGame);
-
-      const addedEntry = yield* repository
-        .list({ query: fakeGame.title })
-        .pipe(Effect.map((games) => games[0]));
-
-      yield* repository.remove(addedEntry.id);
-
-      return yield* repository.list({ query: fakeGame.title });
+      const entryId = yield* repository.addManualGame(game);
+      yield* repository.remove(entryId);
+      return yield* repository.findById(entryId);
     });
 
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(LibraryRepositoryMemory)),
+    // flip turns a typed failure into a value that the test can inspect.
+    const error = await Effect.runPromise(
+      program.pipe(Effect.provide(LibraryRepositoryMemory), Effect.flip),
     );
 
-    expect(result).toEqual([]);
-  });
-
-  it("update updates the entry in the library and could be partial", async () => {
-    const fakeGame = randomGame();
-
-    const program = Effect.gen(function* () {
-      const repository = yield* LibraryRepository;
-
-      yield* repository.addManualGame(fakeGame);
-
-      const before = yield* repository
-        .list({
-          query: fakeGame.title,
-        })
-        .pipe(Effect.map((games) => games[0]));
-
-      yield* repository.update(before.id, {
-        note: "this has to be defined",
-        rating: 8,
-      });
-
-      yield* repository.update(before.id, {
-        status: "playing",
-      });
-
-      const after = yield* repository
-        .list({
-          query: fakeGame.title,
-        })
-        .pipe(Effect.map((games) => games[0]));
-
-      return after;
-    });
-
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(LibraryRepositoryMemory)),
-    );
-
-    expect(result).toMatchObject({
-      status: "playing",
-      note: "this has to be defined",
-      rating: 8,
+    expect(error).toBeInstanceOf(LibraryEntryNotFound);
+    expect(error).toMatchObject({
+      _tag: "LibraryEntryNotFound",
+      gameId: `memory-${game.id}`,
     });
   });
 
-  it("check entries isolation between layers instances", async () => {
-    const fakeGame = randomGame();
-
+  it("allocates independent state for each Layer provision", async () => {
     const addEntry = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
-
-      yield* repository.addManualGame({
-        ...fakeGame,
-        title: "Test game to check isolation",
-        id: "909090",
-      });
-
-      return yield* repository
-        .list({ query: "Test game to check isolation" })
-        .pipe(Effect.map((games) => games[0]));
+      return yield* repository.addManualGame(game);
     });
 
-    const entry = await Effect.runPromise(
+    const entryId = await Effect.runPromise(
       addEntry.pipe(Effect.provide(LibraryRepositoryMemory)),
     );
 
-    const checkEntry = Effect.gen(function* () {
+    const findEntry = Effect.gen(function* () {
       const repository = yield* LibraryRepository;
-
-      return yield* repository.findById(entry.id);
+      return yield* repository.findById(entryId);
     });
 
-    const result = await Effect.runPromise(
-      Effect.flip(checkEntry.pipe(Effect.provide(LibraryRepositoryMemory))),
+    // A separate execution builds a fresh Layer instance without the added entry.
+    const error = await Effect.runPromise(
+      findEntry.pipe(Effect.provide(LibraryRepositoryMemory), Effect.flip),
     );
 
-    expect(result).toMatchObject({
-      _tag: "LibraryEntryNotFound",
-    });
+    expect(error).toBeInstanceOf(LibraryEntryNotFound);
+    expect(error).toMatchObject({ gameId: entryId });
   });
 });

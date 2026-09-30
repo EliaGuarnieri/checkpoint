@@ -21,7 +21,7 @@ Checkpoint is a single-user videogame journal built as a technical exercise cent
 
 ## Technical constraints
 
-- Next.js 16, React 19, TypeScript, Effect v3, TanStack Query v5, Drizzle ORM 0.45, PostgreSQL in Docker, Vitest, shadcn/ui Base Nova, Tailwind CSS 4.
+- Next.js 16, React 19, TypeScript, Effect v3, TanStack Query v5, Drizzle ORM 0.45, PostgreSQL on Supabase, Vitest, shadcn/ui Base Nova, Tailwind CSS 4.
 - Effect owns server configuration, dependencies, validation, errors, external requests, retry, concurrency, and repositories.
 - TanStack Query owns browser queries, mutations, cache invalidation, and no server resilience policy.
 - Drizzle is the only database abstraction; repository interfaces return Effect values.
@@ -30,7 +30,7 @@ Checkpoint is a single-user videogame journal built as a technical exercise cent
 ## Delivery
 
 - `pnpm setup`, `pnpm dev`, `pnpm test`, and `pnpm check` are documented and functional.
-- Docker Compose starts PostgreSQL; migrations and deterministic seed data are included.
+- Development and deployment use Supabase; setup checks the connection without writing data. Migrations run explicitly through the guarded Supabase script.
 - `pnpm check` runs lint, typecheck, and unit tests.
 - README explains local development, setup, live catalog key, architecture, Effect usage, trade-offs, tests, and AI assistance.
 - README includes final screenshots of the library and game detail.

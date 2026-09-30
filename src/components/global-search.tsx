@@ -2,9 +2,7 @@
 
 /* oxlint-disable jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- The search uses the ARIA combobox pattern with custom game options. */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Schema } from "effect";
 import {
   ArrowUpRightIcon,
   LoaderCircleIcon,
@@ -26,20 +24,11 @@ import {
   InputGroupInput,
 } from "~/components/ui/input-group";
 import { Kbd, KbdGroup } from "~/components/ui/kbd";
-import { fetchJson } from "~/lib/api";
 import { requestNavigation } from "~/lib/navigation";
-import {
-  CatalogGamePreviewSchema,
-  type CatalogGamePreview,
-} from "~/modules/catalog/model";
-import { LibraryGameSchema, type LibraryGame } from "~/modules/library/model";
-
-const LibraryResponse = Schema.Array(LibraryGameSchema);
-const CatalogResponse = Schema.Array(CatalogGamePreviewSchema);
-const AddedResponse = Schema.Struct({
-  added: Schema.Literal(true),
-  id: Schema.String,
-});
+import { useCatalogSearch } from "~/modules/catalog/hooks";
+import type { CatalogGamePreview } from "~/modules/catalog/model";
+import { useAddLibraryEntry, useLibraryEntries } from "~/modules/library/hooks";
+import type { LibraryGame } from "~/modules/library/model";
 
 type SearchResult =
   | { kind: "library"; game: LibraryGame }
@@ -50,13 +39,13 @@ const getIsMac = () => !/Windows|Linux|X11/i.test(navigator.userAgent);
 
 export function GlobalSearch() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const adding = useRef(false);
   const catalogRetryFocused = useRef(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [addingTitle, setAddingTitle] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const isMac = useSyncExternalStore(subscribePlatform, getIsMac, () => true);
@@ -92,20 +81,11 @@ export function GlobalSearch() {
     return () => document.removeEventListener("keydown", focusShortcut);
   }, [isMac]);
 
-  const library = useQuery({
-    queryKey: ["library", "all"],
-    queryFn: () => fetchJson(LibraryResponse, "/api/library"),
+  const library = useLibraryEntries({
     enabled: open && query.trim().length > 0,
   });
-  const catalog = useQuery({
-    queryKey: ["catalog-search", debouncedQuery],
-    queryFn: () =>
-      fetchJson(
-        CatalogResponse,
-        `/api/catalog/search?query=${encodeURIComponent(debouncedQuery)}`,
-      ),
+  const catalog = useCatalogSearch(debouncedQuery, {
     enabled: open && debouncedQuery.length >= 2,
-    staleTime: 1000 * 60 * 5,
   });
   useEffect(() => {
     if (catalog.isSuccess && catalogRetryFocused.current) {
@@ -113,31 +93,7 @@ export function GlobalSearch() {
       input.current?.focus();
     }
   }, [catalog.isSuccess]);
-  const add = useMutation({
-    mutationFn: async ({
-      game,
-    }: {
-      game: CatalogGamePreview;
-      replace: boolean;
-    }) => {
-      const added = await fetchJson(AddedResponse, "/api/library", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: game.id }),
-      });
-      return added.id;
-    },
-    onSuccess: async (id, { replace }) => {
-      await queryClient.invalidateQueries({ queryKey: ["library"] });
-      setOpen(false);
-      setQuery("");
-      if (replace) router.replace(`/games/${id}`);
-      else router.push(`/games/${id}`);
-    },
-    onSettled: () => {
-      adding.current = false;
-    },
-  });
+  const add = useAddLibraryEntry();
 
   const normalized = query.trim().toLocaleLowerCase("it");
   const libraryMatches = (library.data ?? [])
@@ -184,7 +140,18 @@ export function GlobalSearch() {
     if (result.kind === "catalog") {
       requestNavigation((replace) => {
         adding.current = true;
-        add.mutate({ game: result.game, replace });
+        setAddingTitle(result.game.title);
+        add.mutate(result.game.id, {
+          onSuccess: (id) => {
+            setOpen(false);
+            setQuery("");
+            if (replace) router.replace(`/games/${id}`);
+            else router.push(`/games/${id}`);
+          },
+          onSettled: () => {
+            adding.current = false;
+          },
+        });
       });
       return;
     }
@@ -429,8 +396,7 @@ export function GlobalSearch() {
                             .join(" · ") || "Data e genere non disponibili"}
                         </small>
                         <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                          {add.isPending &&
-                          add.variables?.game.id === game.id ? (
+                          {add.isPending && add.variables === game.id ? (
                             <>
                               <LoaderCircleIcon
                                 size={14}
@@ -469,13 +435,13 @@ export function GlobalSearch() {
                 role="status"
                 className="px-3 py-3 text-sm text-muted-foreground"
               >
-                Aggiungo {add.variables?.game.title} alla libreria…
+                Aggiungo {addingTitle} alla libreria…
               </p>
             )}
             {add.isError && (
               <p role="alert" className="px-3 py-3 text-sm text-destructive">
-                Non siamo riusciti ad aggiungere {add.variables?.game.title}.
-                Riprova scegliendo il risultato; la ricerca è ancora qui.
+                Non siamo riusciti ad aggiungere {addingTitle}. Riprova
+                scegliendo il risultato; la ricerca è ancora qui.
               </p>
             )}
           </section>

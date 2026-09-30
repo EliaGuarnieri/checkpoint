@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Schema } from "effect";
 import {
   ArrowUpRightIcon,
   PlusIcon,
@@ -28,14 +26,10 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 import { Spinner } from "~/components/ui/spinner";
 import { Slider } from "~/components/ui/slider";
-import { fetchJson } from "~/lib/api";
-import {
-  LibraryGameSchema,
-  type TrackingStatus,
-} from "~/modules/library/model";
+import { useLibraryEntries } from "~/modules/library/hooks";
+import type { TrackingStatus } from "~/modules/library/model";
 import { filterLibraryGames } from "~/modules/library/query";
 
-const LibraryResponse = Schema.Array(LibraryGameSchema);
 const statuses: ReadonlyArray<{
   value: TrackingStatus | "all";
   label: string;
@@ -70,10 +64,7 @@ export function LibraryView() {
   const [publisher, setPublisher] = useState("");
   const [minimumRating, setMinimumRating] = useState(0);
   const [sort, setSort] = useState<Sort>("updated");
-  const library = useQuery({
-    queryKey: ["library", "all"],
-    queryFn: () => fetchJson(LibraryResponse, "/api/library"),
-  });
+  const library = useLibraryEntries();
   useEffect(() => {
     if (library.isSuccess && retryFocused.current) {
       retryFocused.current = false;

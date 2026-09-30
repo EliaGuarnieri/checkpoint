@@ -1,7 +1,5 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Schema } from "effect";
 import {
   ArrowLeftIcon,
   RefreshCwIcon,
@@ -46,19 +44,17 @@ import { Separator } from "~/components/ui/separator";
 import { Slider } from "~/components/ui/slider";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
-import { fetchJson } from "~/lib/api";
 import {
   navigationRequestEvent,
   type NavigationRequest,
 } from "~/lib/navigation";
 import {
-  LibraryGameSchema,
-  type LibraryGame,
-  type TrackingStatus,
-} from "~/modules/library/model";
-
-const UpdatedResponse = Schema.Struct({ updated: Schema.Literal(true) });
-const RemovedResponse = Schema.Struct({ removed: Schema.Literal(true) });
+  useLibraryEntry,
+  useRefreshLibraryEntryMetadata,
+  useRemoveLibraryEntry,
+  useUpdateLibraryEntry,
+} from "~/modules/library/hooks";
+import type { LibraryGame, TrackingStatus } from "~/modules/library/model";
 const statuses: ReadonlyArray<{
   value: TrackingStatus;
   label: string;
@@ -74,10 +70,7 @@ const isTrackingStatus = (value: string): value is TrackingStatus =>
 
 export function GameDetail({ gameId }: { readonly gameId: string }) {
   const retryRequested = useRef(false);
-  const game = useQuery({
-    queryKey: ["library-game", gameId],
-    queryFn: () => fetchJson(LibraryGameSchema, `/api/library/${gameId}`),
-  });
+  const game = useLibraryEntry(gameId);
   useEffect(() => {
     if (retryRequested.current && game.data) {
       retryRequested.current = false;
@@ -134,7 +127,6 @@ export function GameDetail({ gameId }: { readonly gameId: string }) {
 
 function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [draft, setDraft] = useState({
     revision: game.updatedAt,
     status: game.status,
@@ -263,51 +255,15 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
       document.removeEventListener("click", guardLibraryLink, true);
     };
   }, [dirty, router]);
-  const update = useMutation({
-    mutationFn: () =>
-      fetchJson(UpdatedResponse, `/api/library/${game.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          rating: rating || null,
-          note: note || null,
-        }),
-      }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["library"] }),
-        queryClient.invalidateQueries({ queryKey: ["library-game", game.id] }),
-      ]);
-      saveFocusRequested.current = true;
-    },
-  });
+  const update = useUpdateLibraryEntry(game.id);
   useEffect(() => {
     if (!dirty && update.isSuccess && saveFocusRequested.current) {
       saveFocusRequested.current = false;
       saveStatus.current?.focus();
     }
   }, [dirty, update.isSuccess]);
-  const remove = useMutation({
-    mutationFn: () =>
-      fetchJson(RemovedResponse, `/api/library/${game.id}`, {
-        method: "DELETE",
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["library"] });
-      router.push("/");
-    },
-  });
-  const refresh = useMutation({
-    mutationFn: () =>
-      fetchJson(LibraryGameSchema, `/api/library/${game.id}/refresh`, {
-        method: "POST",
-      }),
-    onSuccess: async (refreshed) => {
-      queryClient.setQueryData(["library-game", game.id], refreshed);
-      await queryClient.invalidateQueries({ queryKey: ["library"] });
-    },
-  });
+  const remove = useRemoveLibraryEntry(game.id);
+  const refresh = useRefreshLibraryEntryMetadata(game.id);
 
   return (
     <article className="space-y-8">
@@ -569,7 +525,16 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                   : "Le modifiche sono salvate"}
               </span>
               <Button
-                onClick={() => update.mutate()}
+                onClick={() =>
+                  update.mutate(
+                    { status, rating: rating || null, note: note || null },
+                    {
+                      onSuccess: () => {
+                        saveFocusRequested.current = true;
+                      },
+                    },
+                  )
+                }
                 disabled={!dirty || update.isPending}
               >
                 {update.isPending ? (
@@ -691,7 +656,11 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                   <Button
                     variant="destructive"
                     disabled={remove.isPending}
-                    onClick={() => remove.mutate()}
+                    onClick={() =>
+                      remove.mutate(undefined, {
+                        onSuccess: () => router.push("/"),
+                      })
+                    }
                   >
                     {remove.isPending ? (
                       <Spinner data-icon="inline-start" aria-hidden="true" />
