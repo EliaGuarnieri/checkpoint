@@ -182,7 +182,7 @@ export function LibraryView() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border pb-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
           <fieldset className="flex min-w-0 gap-1 overflow-x-auto pb-1">
             <legend className="sr-only">Filtra per stato</legend>
             {statuses.map((item) => {
@@ -216,7 +216,7 @@ export function LibraryView() {
                 <Badge variant="secondary">{activeFilters.length}</Badge>
               )}
             </summary>
-            <div className="z-20 mt-2 grid gap-4 rounded-xl border border-border bg-popover p-4 shadow-xl sm:grid-cols-2 xl:absolute xl:right-0 xl:w-140">
+            <div className="z-20 mt-2 grid gap-4 rounded-xl border border-border bg-popover p-4 shadow-xl md:absolute md:right-0 md:w-90">
               <Field>
                 <FieldLabel htmlFor="library-query">Titolo</FieldLabel>
                 <div className="relative">
@@ -286,7 +286,7 @@ export function LibraryView() {
                   className="py-3"
                 />
               </Field>
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
+              <Button variant="ghost" onClick={resetFilters}>
                 Azzera filtri
               </Button>
             </div>
