@@ -11,6 +11,7 @@ import { cn } from "cn";
 export const metadata: Metadata = {
   title: "Checkpoint — il tuo diario videoludico",
   description: "Importa, organizza e racconta i videogiochi che hai giocato.",
+  openGraph: { type: "website" },
 };
 
 const geist = Geist({
