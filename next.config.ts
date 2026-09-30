@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": ["./certs/supabase-ca.crt"],
   },
+  allowedDevOrigins: ["192.168.1.16"],
 };
 
 export default nextConfig;
