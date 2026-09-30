@@ -320,9 +320,11 @@ export function LibraryView() {
         {(library.isError || (library.isLoading && library.isFetched)) && (
           <Alert variant="destructive">
             <AlertTitle>Libreria non disponibile</AlertTitle>
-            <AlertDescription>
-              Non è stato possibile caricare i giochi. Riprova qui senza perdere
-              i filtri.
+            <AlertDescription className="flex flex-col gap-3">
+              <span>
+                Non è stato possibile caricare i giochi. Riprova qui senza
+                perdere i filtri.
+              </span>
               <Button
                 onFocus={() => {
                   retryFocused.current = true;
@@ -332,6 +334,7 @@ export function LibraryView() {
                 }}
                 type="button"
                 variant="outline"
+                className="min-h-11 min-w-11 self-start"
                 aria-disabled={library.isFetching}
                 onClick={() => {
                   if (library.isFetching) return;
@@ -339,7 +342,11 @@ export function LibraryView() {
                 }}
               >
                 {library.isFetching && (
-                  <Spinner data-icon="inline-start" aria-hidden="true" />
+                  <Spinner
+                    data-icon="inline-start"
+                    aria-hidden="true"
+                    className="motion-reduce:animate-none"
+                  />
                 )}
                 {library.isFetching ? "Riprovo…" : "Riprova"}
               </Button>

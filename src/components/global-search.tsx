@@ -482,12 +482,15 @@ export function GlobalSearch() {
           {query.trim().length >= 2 && library.isSuccess && catalogRecovery && (
             <Alert variant="destructive">
               <AlertTitle>Catalogo non disponibile</AlertTitle>
-              <AlertDescription>
-                Non è stato possibile cercare i giochi nel catalogo. Riprova la
-                ricerca corrente.
+              <AlertDescription className="flex flex-col gap-3">
+                <span>
+                  Non è stato possibile cercare i giochi nel catalogo. Riprova
+                  la ricerca corrente.
+                </span>
                 <Button
                   type="button"
                   variant="outline"
+                  className="min-h-11 min-w-11 self-start"
                   aria-disabled={catalog.isFetching}
                   onFocus={() => {
                     catalogRetryFocused.current = true;
@@ -501,7 +504,11 @@ export function GlobalSearch() {
                   }}
                 >
                   {catalog.isFetching && (
-                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                    <Spinner
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                      className="motion-reduce:animate-none"
+                    />
                   )}
                   {catalog.isFetching ? "Riprovo…" : "Riprova"}
                 </Button>

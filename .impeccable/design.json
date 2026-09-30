@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-30T14:59:27Z",
+  "generatedAt": "2026-09-30T20:15:46Z",
   "title": "Design System: Checkpoint",
   "extensions": {
     "colorMeta": {
@@ -361,8 +361,8 @@
       "name": "Search Input",
       "kind": "input",
       "description": "Ricerca nell'header per libreria e catalogo.",
-      "html": "<input class=\"ds-search\" placeholder=\"Cerca un gioco o aggiungilo…\" aria-label=\"Cerca un gioco\">",
-      "css": ".ds-search{height:2.5rem;width:100%;padding:0 .75rem;border:1px solid var(--input);border-radius:var(--radius-lg);background:var(--card);color:var(--foreground);font:400 .875rem Geist,sans-serif;transition:border-color .2s,box-shadow .2s}.ds-search::placeholder{color:var(--muted-foreground)}.ds-search:hover{border-color:var(--ring)}.ds-search:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+      "html": "<input class=\"ds-search\" placeholder=\"Cerca nella libreria o nel catalogo RAWG…\" aria-label=\"Cerca un gioco nella libreria e nel catalogo RAWG\">",
+      "css": ".ds-search{height:2.5rem;width:100%;padding:0 .75rem;border:1px solid var(--input);border-radius:var(--radius-lg);background:var(--card);color:var(--foreground);font:400 .875rem Geist,sans-serif;transition:border-color .2s,box-shadow .2s}.ds-search::placeholder{color:var(--muted-foreground)}.ds-search:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
       "name": "Status Badge",
@@ -370,7 +370,7 @@
       "refersTo": "badge-secondary-dark",
       "description": "Stato leggibile sopra la cover senza occupare l'accento principale.",
       "html": "<span class=\"ds-badge\">In corso</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;height:1.25rem;padding:0 .5rem;border-radius:9999px;background:var(--secondary);color:var(--secondary-foreground);font:500 .75rem Geist,sans-serif;white-space:nowrap}.ds-badge:hover{filter:brightness(.95)}.ds-badge:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+      "css": ".ds-badge{display:inline-flex;align-items:center;height:1.25rem;padding:0 .5rem;border-radius:9999px;background:var(--secondary);color:var(--secondary-foreground);font:500 .75rem Geist,sans-serif;white-space:nowrap}.ds-badge:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
       "name": "Library Card",
@@ -378,13 +378,13 @@
       "refersTo": "library-card-dark",
       "description": "Cover ampia, metadati brevi e voto personale.",
       "html": "<a class=\"ds-card\" href=\"#\"><div class=\"ds-card-cover\">Copertina</div><div class=\"ds-card-content\"><small>2020 · Action</small><strong>Hades</strong><span>Supergiant Games</span><footer>9/10 · Il tuo voto</footer></div></a>",
-      "css": ".ds-card{display:block;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-xl);background:var(--card);color:var(--card-foreground);text-decoration:none;transition:transform .3s,box-shadow .3s}.ds-card-cover{display:grid;place-items:center;aspect-ratio:1.55;background:var(--secondary);color:var(--secondary-foreground);font:600 1.25rem Geist,sans-serif}.ds-card-content{display:grid;gap:.375rem;padding:1.25rem;font:400 .875rem Geist,sans-serif}.ds-card-content small,.ds-card-content span{color:var(--muted-foreground)}.ds-card-content strong{margin-top:.5rem;font-size:1.5rem;line-height:1.25}.ds-card-content footer{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.75rem}.ds-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}.ds-card:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}@media(prefers-reduced-motion:reduce){.ds-card:hover{transform:none}}"
+      "css": ".ds-card{display:block;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-xl);background:var(--card);color:var(--card-foreground);text-decoration:none;transition:transform .3s,box-shadow .3s}.ds-card-cover{display:grid;place-items:center;aspect-ratio:1.65;background:var(--secondary);color:var(--secondary-foreground);font:600 1.25rem Geist,sans-serif}.ds-card-content{display:grid;gap:.375rem;padding:1.25rem;font:400 .875rem Geist,sans-serif}.ds-card-content small,.ds-card-content span{color:var(--muted-foreground)}.ds-card-content strong{margin-top:.5rem;font-size:1.5rem;line-height:1.25}.ds-card-content footer{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.75rem}.ds-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}.ds-card:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}@media(prefers-reduced-motion:reduce){.ds-card:hover{transform:none}}"
     },
     {
       "name": "Header Navigation",
       "kind": "nav",
       "description": "Marchio e ricerca su una superficie stabile.",
-      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">checkpoint</span><span class=\"ds-nav-search\">Cerca un gioco o aggiungilo…</span></nav>",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">checkpoint</span><span class=\"ds-nav-search\">Cerca nella libreria o nel catalogo RAWG…</span></nav>",
       "css": ".ds-nav{display:flex;align-items:center;gap:2rem;padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--background);color:var(--foreground);font-family:Geist,sans-serif}.ds-nav-brand{font-size:1.125rem;font-weight:600;letter-spacing:-.025em}.ds-nav-search{flex:1;max-width:28rem;padding:.625rem;border:1px solid var(--input);border-radius:var(--radius-lg);background:var(--card);color:var(--muted-foreground);font-size:.875rem}.ds-nav-search:hover{border-color:var(--ring)}.ds-nav:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
@@ -392,7 +392,7 @@
       "kind": "custom",
       "description": "Riga di risultato compatta con stato hover e focus.",
       "html": "<button class=\"ds-result\"><span class=\"ds-result-cover\"></span><span><strong>Hades</strong><small>Nella tua libreria</small></span></button>",
-      "css": ".ds-result{display:flex;align-items:center;gap:.75rem;width:100%;min-height:2.75rem;padding:.5rem .75rem;border:0;border-radius:var(--radius-lg);background:var(--popover);color:var(--popover-foreground);text-align:left;font-family:Geist,sans-serif}.ds-result-cover{width:4rem;height:2.75rem;border-radius:var(--radius-md);background:var(--secondary)}.ds-result strong,.ds-result small{display:block}.ds-result strong{font-size:.875rem;font-weight:500}.ds-result small{color:var(--muted-foreground);font-size:.75rem}.ds-result:hover{background:var(--accent)}.ds-result:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+      "css": ".ds-result{display:flex;align-items:center;gap:.75rem;width:100%;min-height:2.75rem;padding:.5rem .75rem;border:0;border-radius:var(--radius-lg);background:var(--popover);color:var(--popover-foreground);text-align:left;font-family:Geist,sans-serif}.ds-result-cover{width:6rem;aspect-ratio:3/2;border-radius:var(--radius-md);background:var(--secondary)}.ds-result strong,.ds-result small{display:block}.ds-result strong{font-size:.875rem;font-weight:500}.ds-result small{color:var(--muted-foreground);font-size:.75rem}.ds-result:hover{background:var(--accent)}.ds-result:focus-visible{outline:2px solid var(--ring);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     }
   ],
   "narrative": {
