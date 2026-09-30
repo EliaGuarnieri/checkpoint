@@ -14,6 +14,10 @@ The user's primary goal in this repository is to learn the `effect` library. Whe
 
 ## Agent skills
 
+### New UI components
+
+Before creating a UI component or block, check what is already installed in the project and search the [shadcn/ui component catalog](https://ui.shadcn.com/docs/components.md). If a suitable component exists, use the `shadcn` skill to reuse it or add it with the project's CLI, then compose it using its documented variants. Write custom UI only for needs the available components do not cover.
+
 ### Issue tracker
 
 Issues are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.
