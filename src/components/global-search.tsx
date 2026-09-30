@@ -24,6 +24,7 @@ import {
 } from "~/components/ui/input-group";
 import { Kbd, KbdGroup } from "~/components/ui/kbd";
 import { fetchJson } from "~/lib/api";
+import { requestNavigation } from "~/lib/navigation";
 import {
   CatalogGamePreviewSchema,
   type CatalogGamePreview,
@@ -103,7 +104,12 @@ export function GlobalSearch() {
     staleTime: 1000 * 60 * 5,
   });
   const add = useMutation({
-    mutationFn: async (game: CatalogGamePreview) => {
+    mutationFn: async ({
+      game,
+    }: {
+      game: CatalogGamePreview;
+      replace: boolean;
+    }) => {
       const added = await fetchJson(AddedResponse, "/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -111,11 +117,12 @@ export function GlobalSearch() {
       });
       return added.id;
     },
-    onSuccess: async (id) => {
+    onSuccess: async (id, { replace }) => {
       await queryClient.invalidateQueries({ queryKey: ["library"] });
       setOpen(false);
       setQuery("");
-      router.push(`/games/${id}`);
+      if (replace) router.replace(`/games/${id}`);
+      else router.push(`/games/${id}`);
     },
     onSettled: () => {
       adding.current = false;
@@ -160,13 +167,24 @@ export function GlobalSearch() {
   const activateResult = (result: SearchResult) => {
     if (adding.current) return;
     if (result.kind === "catalog") {
-      adding.current = true;
-      add.mutate(result.game);
+      requestNavigation((replace) => {
+        adding.current = true;
+        add.mutate({ game: result.game, replace });
+      });
       return;
     }
-    setOpen(false);
-    setQuery("");
-    router.push(`/games/${result.game.id}`);
+    const destination = `/games/${result.game.id}`;
+    if (destination === window.location.pathname) {
+      setOpen(false);
+      setQuery("");
+      return;
+    }
+    requestNavigation((replace) => {
+      setOpen(false);
+      setQuery("");
+      if (replace) router.replace(destination);
+      else router.push(destination);
+    }, destination);
   };
 
   useEffect(() => {
@@ -400,7 +418,7 @@ export function GlobalSearch() {
                           .join(" · ") || "Data e genere non disponibili"}
                       </small>
                       <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                        {add.isPending && add.variables?.id === game.id ? (
+                        {add.isPending && add.variables?.game.id === game.id ? (
                           <>
                             <LoaderCircleIcon
                               size={14}
@@ -439,13 +457,13 @@ export function GlobalSearch() {
               role="status"
               className="px-3 py-3 text-sm text-muted-foreground"
             >
-              Aggiungo {add.variables?.title} alla libreria…
+              Aggiungo {add.variables?.game.title} alla libreria…
             </p>
           )}
           {add.isError && (
             <p role="alert" className="px-3 py-3 text-sm text-destructive">
-              Non siamo riusciti ad aggiungere {add.variables?.title}. Riprova
-              scegliendo il risultato; la ricerca è ancora qui.
+              Non siamo riusciti ad aggiungere {add.variables?.game.title}.
+              Riprova scegliendo il risultato; la ricerca è ancora qui.
             </p>
           )}
         </section>

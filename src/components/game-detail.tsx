@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { GameCover } from "~/components/game-cover";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
@@ -48,6 +48,10 @@ import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { fetchJson } from "~/lib/api";
 import {
+  navigationRequestEvent,
+  type NavigationRequest,
+} from "~/lib/navigation";
+import {
   LibraryGameSchema,
   type LibraryGame,
   type TrackingStatus,
@@ -69,41 +73,196 @@ const isTrackingStatus = (value: string): value is TrackingStatus =>
   statuses.some((item) => item.value === value);
 
 export function GameDetail({ gameId }: { readonly gameId: string }) {
+  const retryRequested = useRef(false);
   const game = useQuery({
     queryKey: ["library-game", gameId],
     queryFn: () => fetchJson(LibraryGameSchema, `/api/library/${gameId}`),
   });
-  if (game.isLoading)
+  useEffect(() => {
+    if (retryRequested.current && game.data) {
+      retryRequested.current = false;
+      document.getElementById("game-title")?.focus();
+    }
+  }, [game.data]);
+  if (game.isLoading && !game.isFetched)
     return (
-      <div className="grid gap-8">
+      <output
+        className="grid gap-8"
+        aria-label="Caricamento del gioco in corso"
+      >
         <Skeleton className="h-80" />
         <Skeleton className="h-96" />
+      </output>
+    );
+  if (game.isError || (game.isLoading && game.isFetched))
+    return (
+      <div className="space-y-5">
+        <Alert variant="destructive">
+          <AlertTitle>Gioco non disponibile</AlertTitle>
+          <AlertDescription>
+            Non è stato possibile caricare questa voce della libreria. Riprova
+            qui oppure torna alla libreria.
+          </AlertDescription>
+        </Alert>
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            type="button"
+            aria-disabled={game.isFetching}
+            onClick={() => {
+              if (game.isFetching) return;
+              retryRequested.current = true;
+              void game.refetch();
+            }}
+          >
+            {game.isFetching && (
+              <Spinner data-icon="inline-start" aria-hidden="true" />
+            )}
+            {game.isFetching ? "Riprovo…" : "Riprova"}
+          </Button>
+          <Link
+            href="/"
+            className="text-sm text-foreground underline underline-offset-4 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Torna alla libreria
+          </Link>
+        </div>
       </div>
     );
-  if (game.isError)
-    return (
-      <Alert variant="destructive">
-        <AlertTitle>Gioco non disponibile</AlertTitle>
-        <AlertDescription>
-          Non è stato possibile caricare questa voce della libreria. Ricarica la
-          pagina per riprovare.
-        </AlertDescription>
-      </Alert>
-    );
   if (!game.data) return <p>Gioco non trovato.</p>;
-  return <GameDetailEditor key={game.data.updatedAt} game={game.data} />;
+  return <GameDetailEditor game={game.data} />;
 }
 
 function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<TrackingStatus>(game.status);
-  const [rating, setRating] = useState(game.rating ?? 0);
-  const [note, setNote] = useState(game.note ?? "");
+  const [draft, setDraft] = useState({
+    revision: game.updatedAt,
+    status: game.status,
+    rating: game.rating ?? 0,
+    note: game.note ?? "",
+  });
+  const currentDraft =
+    draft.revision === game.updatedAt
+      ? draft
+      : {
+          revision: game.updatedAt,
+          status: game.status,
+          rating: game.rating ?? 0,
+          note: game.note ?? "",
+        };
+  const { status, rating, note } = currentDraft;
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveTarget, setLeaveTarget] = useState<"library" | "other">(
+    "library",
+  );
+  const pendingNavigation = useRef<(() => void) | null>(null);
+  const historyGuardArmed = useRef(false);
+  const rearmHistoryOnCancel = useRef(false);
+  const leavingConfirmed = useRef(false);
+  const saveFocusRequested = useRef(false);
+  const saveStatus = useRef<HTMLOutputElement>(null);
   const dirty =
     status !== game.status ||
     rating !== (game.rating ?? 0) ||
     note !== (game.note ?? "");
+  useEffect(() => {
+    if (leavingConfirmed.current) return;
+    if (!dirty) {
+      if (historyGuardArmed.current) {
+        historyGuardArmed.current = false;
+        window.history.back();
+      }
+      return;
+    }
+    const currentUrl = window.location.href;
+    const currentHistoryState = window.history.state;
+    if (
+      !historyGuardArmed.current &&
+      !rearmHistoryOnCancel.current &&
+      window.history.length > 1
+    ) {
+      // Back first reaches this same-page entry, before Next can leave the route.
+      window.history.pushState(currentHistoryState, "", currentUrl);
+      historyGuardArmed.current = true;
+    }
+    const askToLeave = (
+      continueNavigation: () => void,
+      target: "library" | "other",
+    ) => {
+      pendingNavigation.current = continueNavigation;
+      setLeaveTarget(target);
+      setLeaveOpen(true);
+    };
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const guardLibraryLink = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        !(event.target instanceof Element)
+      )
+        return;
+      const link = event.target.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !link ||
+        link.hasAttribute("download") ||
+        (link.target && link.target !== "_self")
+      )
+        return;
+      const destination = new URL(link.href);
+      if (
+        destination.origin !== window.location.origin ||
+        destination.pathname !== "/"
+      )
+        return;
+      event.preventDefault();
+      askToLeave(() => {
+        if (historyGuardArmed.current) router.replace("/");
+        else router.push("/");
+      }, "library");
+    };
+    const guardHistory = (event: PopStateEvent) => {
+      const leftCurrentUrl = window.location.href !== currentUrl;
+      if (!leftCurrentUrl && !historyGuardArmed.current) return;
+      event.stopImmediatePropagation();
+      if (leftCurrentUrl) {
+        window.history.pushState(currentHistoryState, "", currentUrl);
+        historyGuardArmed.current = true;
+      } else {
+        historyGuardArmed.current = false;
+        rearmHistoryOnCancel.current = true;
+      }
+      askToLeave(() => router.replace("/"), "library");
+    };
+    const guardNavigationRequest = (event: Event) => {
+      const request = event as CustomEvent<NavigationRequest>;
+      if (request.detail.destination === window.location.pathname) return;
+      event.preventDefault();
+      askToLeave(
+        () => request.detail.continueNavigation(historyGuardArmed.current),
+        "other",
+      );
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    window.addEventListener("popstate", guardHistory, true);
+    window.addEventListener(navigationRequestEvent, guardNavigationRequest);
+    document.addEventListener("click", guardLibraryLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      window.removeEventListener("popstate", guardHistory, true);
+      window.removeEventListener(
+        navigationRequestEvent,
+        guardNavigationRequest,
+      );
+      document.removeEventListener("click", guardLibraryLink, true);
+    };
+  }, [dirty, router]);
   const update = useMutation({
     mutationFn: () =>
       fetchJson(UpdatedResponse, `/api/library/${game.id}`, {
@@ -120,8 +279,15 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
         queryClient.invalidateQueries({ queryKey: ["library"] }),
         queryClient.invalidateQueries({ queryKey: ["library-game", game.id] }),
       ]);
+      saveFocusRequested.current = true;
     },
   });
+  useEffect(() => {
+    if (!dirty && update.isSuccess && saveFocusRequested.current) {
+      saveFocusRequested.current = false;
+      saveStatus.current?.focus();
+    }
+  }, [dirty, update.isSuccess]);
   const remove = useMutation({
     mutationFn: () =>
       fetchJson(RemovedResponse, `/api/library/${game.id}`, {
@@ -151,9 +317,58 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
       >
         <ArrowLeftIcon size={17} aria-hidden="true" /> Torna alla libreria
       </Link>
+      <AlertDialog
+        open={leaveOpen}
+        onOpenChange={(open) => {
+          setLeaveOpen(open);
+          if (!open && pendingNavigation.current) {
+            if (rearmHistoryOnCancel.current) {
+              if (dirty) {
+                window.history.pushState(
+                  window.history.state,
+                  "",
+                  window.location.href,
+                );
+                historyGuardArmed.current = true;
+              }
+              rearmHistoryOnCancel.current = false;
+            }
+            pendingNavigation.current = null;
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hai modifiche non salvate</AlertDialogTitle>
+            <AlertDialogDescription>
+              {leaveTarget === "library"
+                ? "Se torni alla libreria, perderai le modifiche a stato, voto e nota."
+                : "Se lasci questa pagina, perderai le modifiche a stato, voto e nota."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Resta qui</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const continueNavigation = pendingNavigation.current;
+                pendingNavigation.current = null;
+                rearmHistoryOnCancel.current = false;
+                leavingConfirmed.current = true;
+                setLeaveOpen(false);
+                continueNavigation?.();
+              }}
+            >
+              {leaveTarget === "library"
+                ? "Scarta e torna alla libreria"
+                : "Scarta e continua"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <header className="grid overflow-hidden rounded-xl bg-card text-card-foreground md:min-h-96 md:grid-cols-[1fr_47%]">
-        <div className="order-2 flex min-w-0 flex-col justify-center p-6 sm:p-8 md:order-1 lg:p-10">
+        <div className="order-2 flex min-w-0 flex-col justify-center p-5 sm:p-8 md:order-1 lg:p-10">
           <div className="flex flex-wrap gap-2">
             {game.genres.slice(0, 3).map((genre) => (
               <Badge key={genre} variant="secondary">
@@ -161,7 +376,11 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               </Badge>
             ))}
           </div>
-          <h1 className="mt-5 text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+          <h1
+            id="game-title"
+            tabIndex={-1}
+            className="mt-5 text-4xl leading-tight font-semibold tracking-tight text-balance focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring sm:text-5xl lg:text-6xl"
+          >
             {game.title}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -169,10 +388,10 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             <span aria-hidden="true"> · </span>
             {game.releaseDate?.slice(0, 4) ?? "Anno ignoto"}
           </p>
-          <div className="mt-10 flex flex-wrap gap-x-12 gap-y-5 border-t border-border pt-5">
+          <div className="mt-6 flex flex-wrap gap-x-12 gap-y-5 border-t border-border pt-5 md:mt-10">
             <div className="flex flex-col gap-1">
               <small className="text-xs text-muted-foreground">
-                Il tuo stato
+                Stato salvato
               </small>
               <strong className="text-lg font-semibold">
                 {statuses.find((item) => item.value === game.status)?.label}
@@ -180,7 +399,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             </div>
             <div className="flex flex-col gap-1">
               <small className="text-xs text-muted-foreground">
-                Il tuo voto
+                Voto salvato
               </small>
               <strong className="text-lg font-semibold">
                 {game.rating != null ? (
@@ -196,8 +415,16 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               </strong>
             </div>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-5 h-11 self-start md:hidden"
+            onClick={() => document.getElementById("status")?.focus()}
+          >
+            Modifica il tuo checkpoint
+          </Button>
         </div>
-        <div className="order-1 h-64 bg-muted md:order-2 md:h-full">
+        <div className="order-1 h-36 bg-muted md:order-2 md:h-full">
           <GameCover
             title={game.title}
             coverUrl={game.coverUrl}
@@ -218,8 +445,22 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               Il tuo checkpoint
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Lo spazio per tenere traccia di dove sei e di cosa vuoi ricordare.
+              Modifica la tua bozza qui. La testata mostra i valori salvati.
             </p>
+            <output
+              ref={saveStatus}
+              tabIndex={-1}
+              aria-label="Stato delle modifiche"
+              aria-live="polite"
+              aria-atomic="true"
+              className="mt-3 text-sm text-muted-foreground"
+            >
+              {update.isPending
+                ? "Salvataggio in corso"
+                : dirty
+                  ? "Modifiche non salvate"
+                  : "Tutto aggiornato"}
+            </output>
           </div>
           <FieldGroup>
             <div className="grid gap-6 sm:grid-cols-2">
@@ -227,8 +468,10 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                 <FieldLabel htmlFor="status">Stato</FieldLabel>
                 <Select
                   value={status}
+                  disabled={update.isPending}
                   onValueChange={(value) => {
-                    if (value && isTrackingStatus(value)) setStatus(value);
+                    if (value && isTrackingStatus(value))
+                      setDraft({ ...currentDraft, status: value });
                   }}
                 >
                   <SelectTrigger id="status">
@@ -266,8 +509,11 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                   min={0}
                   max={10}
                   step={1}
+                  disabled={update.isPending}
                   value={rating}
-                  onValueChange={(value) => setRating(value as number)}
+                  onValueChange={(value) =>
+                    setDraft({ ...currentDraft, rating: value as number })
+                  }
                   thumbLabel="Il tuo voto"
                   valueText={rating ? `${rating} su 10` : "Senza voto"}
                   className="py-3"
@@ -291,8 +537,11 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               <Textarea
                 id="note"
                 className="min-h-28"
+                disabled={update.isPending}
                 value={note}
-                onChange={(event) => setNote(event.target.value)}
+                onChange={(event) =>
+                  setDraft({ ...currentDraft, note: event.target.value })
+                }
                 placeholder="Un momento da ricordare, una cosa da fare quando torni a giocare…"
               />
               <FieldDescription>
@@ -309,14 +558,16 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             )}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
               <span className="text-xs text-muted-foreground">
-                {dirty ? "Modifiche non salvate" : "Tutto aggiornato"}
+                {dirty
+                  ? "Salva per aggiornare la tua libreria"
+                  : "Le modifiche sono salvate"}
               </span>
               <Button
                 onClick={() => update.mutate()}
                 disabled={!dirty || update.isPending}
               >
                 {update.isPending ? (
-                  <Spinner data-icon="inline-start" />
+                  <Spinner data-icon="inline-start" aria-hidden="true" />
                 ) : (
                   <SaveIcon data-icon="inline-start" />
                 )}{" "}
@@ -385,7 +636,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                 onClick={() => refresh.mutate()}
               >
                 {refresh.isPending ? (
-                  <Spinner data-icon="inline-start" />
+                  <Spinner data-icon="inline-start" aria-hidden="true" />
                 ) : (
                   <RefreshCwIcon data-icon="inline-start" />
                 )}
@@ -437,7 +688,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
                     onClick={() => remove.mutate()}
                   >
                     {remove.isPending ? (
-                      <Spinner data-icon="inline-start" />
+                      <Spinner data-icon="inline-start" aria-hidden="true" />
                     ) : (
                       <Trash2Icon data-icon="inline-start" />
                     )}
