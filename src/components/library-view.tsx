@@ -93,14 +93,27 @@ export function LibraryView() {
       sort,
     ],
   );
-  const advancedCount = [
-    query,
-    genre,
-    developer,
-    publisher,
-    minimumRating,
-  ].filter(Boolean).length;
+  const activeFilters = [
+    ...(status === "all"
+      ? []
+      : [{ label: "Stato", value: statusLabels[status] }]),
+    ...(query ? [{ label: "Titolo", value: query }] : []),
+    ...(genre ? [{ label: "Genere", value: genre }] : []),
+    ...(developer ? [{ label: "Sviluppatore", value: developer }] : []),
+    ...(publisher ? [{ label: "Publisher", value: publisher }] : []),
+    ...(minimumRating
+      ? [{ label: "Voto minimo", value: `${minimumRating}/10` }]
+      : []),
+  ];
   const focusSearch = () => document.getElementById("global-search")?.focus();
+  const resetFilters = () => {
+    setStatus("all");
+    setQuery("");
+    setGenre("");
+    setDeveloper("");
+    setPublisher("");
+    setMinimumRating(0);
+  };
 
   return (
     <div className="space-y-12">
@@ -188,8 +201,8 @@ export function LibraryView() {
           <details className="group relative shrink-0">
             <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 text-[0.8rem] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
               <SlidersHorizontalIcon size={17} aria-hidden="true" /> Filtri{" "}
-              {advancedCount > 0 && (
-                <Badge variant="secondary">{advancedCount}</Badge>
+              {activeFilters.length > 0 && (
+                <Badge variant="secondary">{activeFilters.length}</Badge>
               )}
             </summary>
             <div className="z-20 mt-2 grid gap-4 rounded-xl border border-border bg-popover p-4 shadow-xl sm:grid-cols-2 xl:absolute xl:right-0 xl:w-140">
@@ -262,22 +275,27 @@ export function LibraryView() {
                   className="py-3"
                 />
               </Field>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setQuery("");
-                  setGenre("");
-                  setDeveloper("");
-                  setPublisher("");
-                  setMinimumRating(0);
-                }}
-              >
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
                 Azzera filtri
               </Button>
             </div>
           </details>
         </div>
+
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>Filtri attivi:</span>
+            {activeFilters.map(({ label, value }) => (
+              <Badge
+                key={label}
+                variant="secondary"
+                className="max-w-full break-all"
+              >
+                {label}: {value}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {library.isError && (
           <Alert variant="destructive">
@@ -365,20 +383,7 @@ export function LibraryView() {
                 ? "Prova a cambiare stato o ad azzerare i filtri."
                 : "Cerca un titolo e aggiungi il primo gioco alla tua collezione."}
             </p>
-            <Button
-              onClick={
-                library.data?.length
-                  ? () => {
-                      setStatus("all");
-                      setQuery("");
-                      setGenre("");
-                      setDeveloper("");
-                      setPublisher("");
-                      setMinimumRating(0);
-                    }
-                  : focusSearch
-              }
-            >
+            <Button onClick={library.data?.length ? resetFilters : focusSearch}>
               {library.data?.length ? "Azzera i filtri" : "Cerca un gioco"}
             </Button>
           </div>
