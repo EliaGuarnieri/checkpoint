@@ -107,7 +107,16 @@ describe("library entry detail", () => {
     const edit = screen.getByRole("button", {
       name: "Modifica il tuo checkpoint",
     });
+    const checkpointTitle = screen.getByRole("heading", {
+      name: "Il tuo checkpoint",
+    });
+    const scrollIntoView = vi.fn();
+    checkpointTitle.scrollIntoView = scrollIntoView;
     await user.click(edit);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "start",
+    });
     expect(screen.getByRole("combobox", { name: "Stato" })).toHaveProperty(
       "ownerDocument.activeElement",
       screen.getByRole("combobox", { name: "Stato" }),

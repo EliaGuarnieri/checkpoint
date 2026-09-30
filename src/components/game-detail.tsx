@@ -419,7 +419,13 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
             type="button"
             variant="outline"
             className="mt-5 h-11 self-start md:hidden"
-            onClick={() => document.getElementById("status")?.focus()}
+            onClick={() => {
+              document.getElementById("checkpoint-title")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+              document.getElementById("status")?.focus({ preventScroll: true });
+            }}
           >
             Modifica il tuo checkpoint
           </Button>
@@ -440,7 +446,7 @@ function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
           <div className="mb-8">
             <h2
               id="checkpoint-title"
-              className="text-2xl font-semibold tracking-tight sm:text-3xl"
+              className="scroll-mt-32 text-2xl font-semibold tracking-tight sm:text-3xl"
             >
               Il tuo checkpoint
             </h2>
