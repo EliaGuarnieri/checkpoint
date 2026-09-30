@@ -1,16 +1,21 @@
 import { Schema } from "effect";
 
-import { LibraryEntryUpdate, TrackingStatus } from "~/modules/library/model";
+import { CatalogGameId } from "~/modules/catalog/model";
+import {
+  LibraryEntryId,
+  LibraryEntryUpdate,
+  TrackingStatus,
+} from "~/modules/library/model";
 
 export const CatalogSearchInput = Schema.Struct({
   query: Schema.String.pipe(Schema.trimmed(), Schema.minLength(2)),
 });
 
 export const AddCatalogGameInput = Schema.Struct({
-  id: Schema.String.pipe(Schema.pattern(/^\d+$/)),
+  id: CatalogGameId,
 });
 export const LibraryEntryUpdateInput = LibraryEntryUpdate;
-export const LibraryEntryIdInput = Schema.UUID;
+export const LibraryEntryIdInput = LibraryEntryId;
 
 export const LibraryFiltersInput = Schema.Struct({
   query: Schema.optional(Schema.String),

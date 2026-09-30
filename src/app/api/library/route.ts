@@ -4,10 +4,10 @@ import {
   LibraryFiltersInput,
   AddCatalogGameInput,
 } from "~/infrastructure/api-schema";
-import { makeAppLayer } from "~/infrastructure/app-layer";
+import { getAppRuntimes } from "~/infrastructure/runtime";
 import { runHttp } from "~/infrastructure/http";
 import { jsonBody } from "~/infrastructure/request";
-import { GameCatalog } from "~/modules/catalog/service";
+import { addCatalogGame } from "~/modules/library/programs";
 import { LibraryRepository } from "~/modules/library/service";
 
 export async function GET(request: Request) {
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
     });
     const library = yield* LibraryRepository;
     return yield* library.list(filters);
-  }).pipe(Effect.provide(makeAppLayer()));
-  return runHttp(program);
+  });
+  return runHttp(program, getAppRuntimes().library, request);
 }
 
 export async function POST(request: Request) {
@@ -33,11 +33,8 @@ export async function POST(request: Request) {
     const { id } = yield* Schema.decodeUnknown(AddCatalogGameInput)(
       yield* jsonBody(request),
     );
-    const catalog = yield* GameCatalog;
-    const game = yield* catalog.findById(id);
-    const library = yield* LibraryRepository;
-    const entryId = yield* library.addManualGame(game);
+    const entryId = yield* addCatalogGame(id);
     return { added: true, id: entryId };
-  }).pipe(Effect.provide(makeAppLayer()));
-  return runHttp(program);
+  });
+  return runHttp(program, getAppRuntimes().app, request);
 }

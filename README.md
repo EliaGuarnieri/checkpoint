@@ -95,14 +95,26 @@ Il codice applicativo è organizzato in `src/modules`; gli adapter e la configur
 
 ### Come viene usato Effect
 
-- `Context.Tag` dichiara `GameCatalog` e `LibraryRepository`.
-- `Layer` fornisce gli adapter live all'app e quelli fake o in memoria ai test.
+- `Context.Tag` dichiara `GameCatalog`, `LibraryRepository` e il client `Database`.
+- `Layer` fornisce gli adapter live all'app e quelli fake o in memoria ai test. `DatabaseLive` acquisisce il pool con `Layer.scoped` e ne registra il rilascio con `Effect.acquireRelease`.
 - `Schema` decodifica input HTTP, configurazione e risposte RAWG.
 - `Data.TaggedError` distingue errori del catalogo, del database e voci mancanti.
 - `Effect` separa la ricerca delle anteprime dal caricamento del dettaglio quando un gioco viene aggiunto.
-- `Schedule` ritenta le richieste RAWG fallite con un limite.
+- `Schedule` ritenta solo errori di rete, timeout e HTTP 408, 429 o 5xx, al massimo due volte. Rispetta `Retry-After`; ogni tentativo ha un timeout di 3 secondi, l'intera operazione di 10 secondi. JSON o schema invalidi non vengono ritentati.
+- `Ref` mantiene lo stato dell'adapter in memoria: costruire un Effect non legge né modifica lo stato. `Clock` fornisce i timestamp agli adapter.
+- `Effect.withSpan` identifica casi d'uso e operazioni esterne. Gli span possono essere esportati fornendo un tracer; non è configurato un exporter esterno.
 
 TanStack Query gestisce query, mutation e invalidazione della cache nel browser. Effect gestisce i confini del server e le dipendenze dei programmi. Drizzle gestisce le query SQL; le interfacce dei repository restituiscono valori `Effect`.
+
+Le route eseguono i programmi tramite runtime dedicati a libreria, catalogo e operazioni combinate. Una `Layer.MemoMap` condivisa permette di usare lo stesso pool nei flussi di libreria e aggiunta/refresh. Il runtime del catalogo non richiede PostgreSQL; quello della libreria non richiede `RAWG_API_KEY`. Le risorse vengono costruite al primo utilizzo e riusate per processo, non per richiesta. I casi d'uso `addCatalogGame` e `refreshLibraryEntry` sono in `src/modules/library/programs.ts` e dichiarano le dipendenze senza selezionare implementazioni live.
+
+`disposeAppRuntimes()` chiude gli scope e il pool. Il comando di verifica del database chiama `runtime.dispose()` nel `finally`, senza cleanup separato. L'app registra anche un cleanup `beforeExit` per la terminazione naturale di Node. Il server integrato di Next.js termina invece il processo esplicitamente su SIGINT/SIGTERM: `beforeExit` non garantisce finalizer asincroni in quel caso. Un server che integra l'app deve chiamare e attendere `disposeAppRuntimes()` dopo aver drenato le richieste. Non intercettiamo i segnali di Next.js per chiudere il pool mentre richieste o callback `after()` sono ancora attive.
+
+Il confine HTTP distingue input invalidi 400, voci mancanti 404, dati RAWG invalidi 502, indisponibilità 503, timeout RAWG 504, configurazione/query SQL fallite e difetti 500. Una richiesta interrotta viene distinta con 499. Gli errori server registrano la `Cause` con metodo e percorso; le cause esterne potenzialmente sensibili sono conservate come `Redacted`. Il JSON pubblico contiene solo il tag dell'errore.
+
+Le query TanStack inoltrano il proprio `AbortSignal` a `fetchJson`, le route passano `request.signal` al runner, e RAWG mantiene un controller per l'intero tentativo, compresa la lettura del body. Questa propagazione consente la cancellazione dove il framework e il trasporto la supportano. Interrompere un fiber non cancella automaticamente le query Drizzle/PostgreSQL già inviate. Le transazioni restano gestite da Drizzle.
+
+Gli schemi condivisi `Rating`, `Note`, `LibraryEntryId` e `CatalogGameId` rendono coerenti input e output. Gli ID della libreria sono UUID anche nell'adapter in memoria. I tipi TypeScript degli ID restano stringhe; non sono stati introdotti brand.
 
 Il dettaglio del catalogo è una lettura: può mostrare una copertina mancante senza richiedere PostgreSQL o aggiornare uno snapshot. L'aggiunta compone il caricamento da RAWG con `LibraryRepository.addManualGame`; l'adapter PostgreSQL salva snapshot e voce personale nella stessa transazione e restituisce l'ID della voce. La transazione appartiene all'adapter perché `Effect` descrive la sequenza e gli errori, ma non rende atomiche da solo due scritture SQL.
 
@@ -118,7 +130,11 @@ L'importazione Steam e il tracciamento delle fonti di possesso sono stati rimoss
 
 ## Test ed esercizi
 
-Resta un solo file di test, `src/modules/library/repository-memory.test.ts`, come esempio per studiare Effect. Mostra la composizione con `Effect.gen`, la dipendenza dichiarata tramite `Context.Tag`, la fornitura del repository con `Effect.provide`, gli errori tipizzati con `Effect.flip` e l'isolamento dello stato tra istanze del `Layer`. La suite non cerca di coprire tutta l'applicazione. `pnpm check` esegue lint, typecheck e test. Le sei [schede di studio](exercises/README.md) propongono cambiamenti progressivi nei flussi di catalogo, libreria, configurazione e chiamate esterne.
+I test del repository in memoria mostrano composizione, layer, errori tipizzati, isolamento dello stato, esecuzione differita, riuso di letture, aggiunte concorrenti e timestamp tramite `TestClock`. I test dei programmi verificano aggiunta ripetuta, conservazione dei dati personali nel refresh e assenza di modifiche quando il catalogo fallisce.
+
+Le verifiche degli adapter coprono pool condiviso e rilascio, indipendenza della configurazione, distinzione SQL/rete/difetti, retry selettivo, `Retry-After`, timeout con clock simulato e cancellazione durante la lettura JSON. Altri test controllano invarianti di rating/nota e traduzione degli esiti HTTP. Non eseguono scritture sul database reale. `pnpm check` esegue lint, typecheck e test.
+
+L'indagine che ha motivato questi interventi è in [docs/research/effect-principles.md](docs/research/effect-principles.md).
 
 ## Uso dell'AI
 

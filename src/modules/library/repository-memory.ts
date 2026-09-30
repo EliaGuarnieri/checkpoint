@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Clock, Effect, Layer, Ref } from "effect";
 
 import type { CatalogGame } from "~/modules/catalog/model";
 import type { LibraryGame } from "~/modules/library/model";
@@ -8,7 +8,7 @@ import {
   LibraryRepository,
 } from "~/modules/library/service";
 
-let initialEntries: Array<LibraryGame> = [
+const initialEntries: ReadonlyArray<LibraryGame> = [
   {
     id: "00000000-0000-4000-8000-000000000001",
     rawgId: 3498,
@@ -85,11 +85,12 @@ let initialEntries: Array<LibraryGame> = [
     updatedAt: "2026-09-16T12:00:00.000Z",
   },
 ];
-const makeEntries = Effect.sync(() => initialEntries);
-
-const catalogToLibraryGame = (game: CatalogGame): LibraryGame => ({
-  id: `memory-${game.id}`,
-  rawgId: Number.isFinite(Number(game.id)) ? Number(game.id) : null,
+const catalogToLibraryGame = (
+  game: CatalogGame,
+  timestamp: number,
+): LibraryGame => ({
+  id: crypto.randomUUID(),
+  rawgId: Number(game.id),
   title: game.title,
   slug: game.slug,
   coverUrl: game.coverUrl,
@@ -100,70 +101,83 @@ const catalogToLibraryGame = (game: CatalogGame): LibraryGame => ({
   genres: game.genres,
   developers: game.developers,
   publishers: game.publishers,
-  updatedAt: new Date().toISOString(),
+  updatedAt: new Date(timestamp).toISOString(),
 });
 
 export const LibraryRepositoryMemory = Layer.effect(
   LibraryRepository,
   Effect.gen(function* () {
-    let entries = yield* makeEntries;
+    const entries = yield* Ref.make(initialEntries);
+
+    const modifyEntry = (
+      gameId: string,
+      change: (entry: LibraryGame) => LibraryGame | undefined,
+    ) =>
+      Ref.modify(entries, (current) => {
+        if (!current.some(({ id }) => id === gameId)) return [false, current];
+        return [
+          true,
+          current.flatMap((entry) => {
+            if (entry.id !== gameId) return [entry];
+            const changed = change(entry);
+            return changed ? [changed] : [];
+          }),
+        ];
+      }).pipe(
+        Effect.flatMap((found) =>
+          found
+            ? Effect.void
+            : Effect.fail(new LibraryEntryNotFound({ gameId })),
+        ),
+      );
 
     return {
       list: (filters = {}) =>
-        Effect.sync(() => filterLibraryGames(entries, filters)),
-      findById: (gameId) => {
-        const game = entries.find(({ id }) => id === gameId);
-        return game
-          ? Effect.succeed(game)
-          : Effect.fail(new LibraryEntryNotFound({ gameId }));
-      },
+        Ref.get(entries).pipe(
+          Effect.map((current) => filterLibraryGames(current, filters)),
+        ),
+      findById: (gameId) =>
+        Ref.get(entries).pipe(
+          Effect.flatMap((current) => {
+            const game = current.find(({ id }) => id === gameId);
+            return game
+              ? Effect.succeed(game)
+              : Effect.fail(new LibraryEntryNotFound({ gameId }));
+          }),
+        ),
       addManualGame: (game) =>
-        Effect.sync(() => {
-          const existing = entries.find(({ rawgId, slug }) =>
-            rawgId === null ? slug === game.slug : String(rawgId) === game.id,
-          );
-          if (existing) return existing.id;
-          const entry = catalogToLibraryGame(game);
-          entries = [entry, ...entries];
-          return entry.id;
+        Effect.gen(function* () {
+          const timestamp = yield* Clock.currentTimeMillis;
+          return yield* Ref.modify(entries, (current) => {
+            const existing = current.find(({ rawgId, slug }) =>
+              rawgId === null ? slug === game.slug : String(rawgId) === game.id,
+            );
+            if (existing) return [existing.id, current];
+            const entry = catalogToLibraryGame(game, timestamp);
+            return [entry.id, [entry, ...current]];
+          });
         }),
       refreshCatalogGame: (gameId, game) =>
-        Effect.suspend(() => {
-          const existing = entries.find(({ id }) => id === gameId);
-          if (!existing)
-            return Effect.fail(new LibraryEntryNotFound({ gameId }));
-          entries = entries.map((entry) =>
-            entry.id === gameId
-              ? {
-                  ...entry,
-                  title: game.title,
-                  slug: game.slug,
-                  coverUrl: game.coverUrl,
-                  releaseDate: game.releaseDate,
-                  genres: game.genres,
-                  developers: game.developers,
-                  publishers: game.publishers,
-                }
-              : entry,
-          );
-          return Effect.void;
+        modifyEntry(gameId, (entry) => ({
+          ...entry,
+          title: game.title,
+          slug: game.slug,
+          coverUrl: game.coverUrl,
+          releaseDate: game.releaseDate,
+          genres: game.genres,
+          developers: game.developers,
+          publishers: game.publishers,
+        })),
+      update: (gameId, update) =>
+        Effect.gen(function* () {
+          const timestamp = yield* Clock.currentTimeMillis;
+          return yield* modifyEntry(gameId, (entry) => ({
+            ...entry,
+            ...update,
+            updatedAt: new Date(timestamp).toISOString(),
+          }));
         }),
-      update: (gameId, update) => {
-        const index = entries.findIndex(({ id }) => id === gameId);
-        if (index < 0) return Effect.fail(new LibraryEntryNotFound({ gameId }));
-        entries = entries.map((entry) =>
-          entry.id === gameId
-            ? { ...entry, ...update, updatedAt: new Date().toISOString() }
-            : entry,
-        );
-        return Effect.void;
-      },
-      remove: (gameId) => {
-        if (!entries.some(({ id }) => id === gameId))
-          return Effect.fail(new LibraryEntryNotFound({ gameId }));
-        entries = entries.filter(({ id }) => id !== gameId);
-        return Effect.void;
-      },
+      remove: (gameId) => modifyEntry(gameId, () => undefined),
     };
   }),
 );
