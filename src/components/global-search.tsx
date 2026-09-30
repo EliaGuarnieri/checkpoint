@@ -29,7 +29,6 @@ import {
   type CatalogGamePreview,
 } from "~/modules/catalog/model";
 import { LibraryGameSchema, type LibraryGame } from "~/modules/library/model";
-import { Button } from "./ui/button";
 
 const LibraryResponse = Schema.Array(LibraryGameSchema);
 const CatalogResponse = Schema.Array(CatalogGamePreviewSchema);
@@ -50,6 +49,7 @@ export function GlobalSearch() {
   const queryClient = useQueryClient();
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const adding = useRef(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -117,6 +117,9 @@ export function GlobalSearch() {
       setQuery("");
       router.push(`/games/${id}`);
     },
+    onSettled: () => {
+      adding.current = false;
+    },
   });
 
   const normalized = query.trim().toLocaleLowerCase("it");
@@ -155,8 +158,10 @@ export function GlobalSearch() {
   const showPanel = open && query.trim().length > 0;
 
   const activateResult = (result: SearchResult) => {
+    if (adding.current) return;
     if (result.kind === "catalog") {
-      if (!add.isPending) add.mutate(result.game);
+      adding.current = true;
+      add.mutate(result.game);
       return;
     }
     setOpen(false);
@@ -195,10 +200,11 @@ export function GlobalSearch() {
               : undefined
           }
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
-          placeholder="Cerca un gioco o aggiungilo…"
+          placeholder="Cerca nella libreria o nel catalogo RAWG…"
           className="h-full"
           value={query}
           onChange={(event) => {
+            if (add.isError) add.reset();
             setQuery(event.target.value);
             setActiveIndex(-1);
             setOpen(true);
@@ -224,18 +230,9 @@ export function GlobalSearch() {
               );
               return;
             }
-            if (event.key !== "Enter") return;
-            if (selectedIndex >= 0) {
+            if (event.key === "Enter" && selectedIndex >= 0) {
               event.preventDefault();
               activateResult(results[selectedIndex]);
-              return;
-            }
-            const exactMatch = libraryMatches.find(
-              (game) => game.title.toLocaleLowerCase("it") === normalized,
-            );
-            if (exactMatch) {
-              event.preventDefault();
-              activateResult({ kind: "library", game: exactMatch });
             }
           }}
         />
@@ -248,6 +245,7 @@ export function GlobalSearch() {
               size="icon-sm"
               aria-label="Cancella ricerca"
               onClick={() => {
+                if (add.isError) add.reset();
                 setQuery("");
                 setActiveIndex(-1);
                 input.current?.focus();
@@ -263,6 +261,12 @@ export function GlobalSearch() {
           )}
         </InputGroupAddon>
       </InputGroup>
+      {open && !query.trim() && (
+        <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 rounded-xl border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-xl">
+          Cerca nel catalogo RAWG per aggiungere un gioco, oppure apri una voce
+          già nella tua libreria.
+        </div>
+      )}
       {showPanel && (
         <section
           id="global-search-results"
@@ -295,7 +299,7 @@ export function GlobalSearch() {
                 id="library-search-heading"
                 className="px-3 py-2 text-xs font-semibold text-muted-foreground"
               >
-                Nella tua libreria
+                Nella tua libreria · Apri il dettaglio
               </h2>
               {libraryMatches.map((game, index) => (
                 <button
@@ -304,8 +308,9 @@ export function GlobalSearch() {
                   type="button"
                   role="option"
                   aria-selected={selectedIndex === index}
-                  aria-label={`Apri ${game.title} nella libreria`}
-                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring aria-selected:bg-accent"
+                  aria-label={`Apri ${[game.title, game.releaseDate?.slice(0, 4), game.developers[0]].filter(Boolean).join(", ")} nella tua libreria`}
+                  disabled={add.isPending}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-selected:bg-accent"
                   onClick={() => activateResult({ kind: "library", game })}
                 >
                   <span className="relative aspect-3/2 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -316,34 +321,23 @@ export function GlobalSearch() {
                       sizes="128px"
                     />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <strong className="truncate text-sm font-medium">
                       {game.title}
                     </strong>
                     <small className="truncate text-xs text-muted-foreground">
-                      {game.developers[0] ?? "Nella libreria"}
+                      {[game.releaseDate?.slice(0, 4), game.developers[0]]
+                        .filter(Boolean)
+                        .join(" · ") || "Già nella tua libreria"}
                     </small>
+                    <span className="flex items-center gap-1 text-xs font-medium text-foreground">
+                      Apri nella tua libreria{" "}
+                      <ArrowUpRightIcon size={14} aria-hidden="true" />
+                    </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                    {/* <span className="hidden sm:inline">Apri</span> */}
-                    <Button
-                      variant="outline"
-                      render={<span />}
-                      nativeButton={false}
-                      size="xs"
-                      className="max-sm:hidden"
-                    >
-                      Apri{" "}
-                      <Kbd data-icon="inline-end" className="translate-x-0.5">
-                        ⏎
-                      </Kbd>
-                    </Button>
-                    <ArrowUpRightIcon
-                      size={17}
-                      aria-hidden="true"
-                      className="sm:hidden"
-                    />
-                  </span>
+                  <Kbd aria-hidden="true" className="ml-auto shrink-0">
+                    ⏎
+                  </Kbd>
                 </button>
               ))}
             </div>
@@ -360,7 +354,7 @@ export function GlobalSearch() {
                 id="catalog-search-heading"
                 className="px-3 py-2 text-xs font-semibold text-muted-foreground"
               >
-                Risultati della ricerca
+                Catalogo RAWG · Aggiungi alla libreria
               </h2>
               {catalogPending ? (
                 <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
@@ -381,7 +375,7 @@ export function GlobalSearch() {
                     aria-selected={
                       selectedIndex === libraryMatches.length + index
                     }
-                    aria-label={`Aggiungi ${game.title} alla libreria`}
+                    aria-label={`Aggiungi ${[game.title, game.releaseDate?.slice(0, 4), ...game.genres.slice(0, 2)].filter(Boolean).join(", ")} alla libreria dal catalogo RAWG`}
                     disabled={add.isPending}
                     className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-selected:bg-accent"
                     onClick={() => activateResult({ kind: "catalog", game })}
@@ -393,33 +387,39 @@ export function GlobalSearch() {
                         sizes="128px"
                       />
                     </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <strong className="truncate text-sm font-medium">
                         {game.title}
                       </strong>
-                      <small className="text-xs text-muted-foreground">
-                        {game.releaseDate?.slice(0, 4) ?? "Catalogo RAWG"}
+                      <small className="truncate text-xs text-muted-foreground">
+                        {[
+                          game.releaseDate?.slice(0, 4),
+                          ...game.genres.slice(0, 2),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Data e genere non disponibili"}
                       </small>
+                      <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                        {add.isPending && add.variables?.id === game.id ? (
+                          <>
+                            <LoaderCircleIcon
+                              size={14}
+                              className="animate-spin"
+                              aria-hidden="true"
+                            />{" "}
+                            Aggiunta in corso…
+                          </>
+                        ) : (
+                          <>
+                            Aggiungi alla libreria{" "}
+                            <PlusIcon size={14} aria-hidden="true" />
+                          </>
+                        )}
+                      </span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                      <Button
-                        variant="outline"
-                        render={<span />}
-                        nativeButton={false}
-                        size="xs"
-                        className="max-sm:hidden"
-                      >
-                        Aggiungi{" "}
-                        <Kbd data-icon="inline-end" className="translate-x-0.5">
-                          ⏎
-                        </Kbd>
-                      </Button>
-                      <PlusIcon
-                        className="sm:hidden"
-                        size={17}
-                        aria-hidden="true"
-                      />
-                    </span>
+                    <Kbd aria-hidden="true" className="ml-auto shrink-0">
+                      ⏎
+                    </Kbd>
                   </button>
                 ))
               ) : (
@@ -434,9 +434,18 @@ export function GlobalSearch() {
               Scrivi almeno 2 caratteri per cercare anche nel catalogo.
             </p>
           )}
+          {add.isPending && (
+            <p
+              role="status"
+              className="px-3 py-3 text-sm text-muted-foreground"
+            >
+              Aggiungo {add.variables?.title} alla libreria…
+            </p>
+          )}
           {add.isError && (
-            <p className="px-3 py-3 text-sm text-destructive">
-              Il gioco non è stato aggiunto. Riprova.
+            <p role="alert" className="px-3 py-3 text-sm text-destructive">
+              Non siamo riusciti ad aggiungere {add.variables?.title}. Riprova
+              scegliendo il risultato; la ricerca è ancora qui.
             </p>
           )}
         </section>
