@@ -1,11 +1,4 @@
-import { Config, ConfigError, Data, Redacted } from "effect";
-
-export class ConfigurationInvalid extends Data.TaggedError(
-  "ConfigurationInvalid",
-)<{
-  readonly setting: string;
-  readonly cause: Redacted.Redacted<unknown>;
-}> {}
+import { Config, ConfigError } from "effect";
 
 const requiredSecret = (name: string) =>
   Config.redacted(

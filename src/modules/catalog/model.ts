@@ -1,9 +1,7 @@
 import { Schema } from "effect";
 
-export const CatalogGameId = Schema.String.pipe(Schema.pattern(/^[1-9]\d*$/));
-
 export const CatalogGamePreviewSchema = Schema.Struct({
-  id: CatalogGameId,
+  id: Schema.String,
   title: Schema.String,
   slug: Schema.String,
   coverUrl: Schema.NullOr(Schema.String),

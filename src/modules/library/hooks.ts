@@ -26,8 +26,7 @@ export function useLibraryEntries({
 }: { readonly enabled?: boolean } = {}) {
   return useQuery({
     queryKey: libraryKeys.list,
-    queryFn: ({ signal }) =>
-      fetchJson(LibraryResponse, "/api/library", { signal }),
+    queryFn: () => fetchJson(LibraryResponse, "/api/library"),
     enabled,
   });
 }
@@ -35,8 +34,7 @@ export function useLibraryEntries({
 export function useLibraryEntry(entryId: string) {
   return useQuery({
     queryKey: libraryKeys.entry(entryId),
-    queryFn: ({ signal }) =>
-      fetchJson(LibraryGameSchema, `/api/library/${entryId}`, { signal }),
+    queryFn: () => fetchJson(LibraryGameSchema, `/api/library/${entryId}`),
   });
 }
 

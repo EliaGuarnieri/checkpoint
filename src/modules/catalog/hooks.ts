@@ -15,11 +15,10 @@ export function useCatalogSearch(
 ) {
   return useQuery({
     queryKey: ["catalog-search", query],
-    queryFn: ({ signal }) =>
+    queryFn: () =>
       fetchJson(
         CatalogResponse,
         `/api/catalog/search?query=${encodeURIComponent(query)}`,
-        { signal },
       ),
     enabled,
     staleTime: 1000 * 60 * 5,

@@ -3,13 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseEnv } from "node:util";
 
-import {
-  ConfigProvider,
-  Effect,
-  Layer,
-  ManagedRuntime,
-  Redacted,
-} from "effect";
+import { ConfigProvider, Effect, ManagedRuntime, Redacted } from "effect";
 
 import {
   DatabaseMigrationUrl,
@@ -108,7 +102,7 @@ const main = async () => {
     }
     case "check": {
       const [
-        { DatabaseLive },
+        { closeDatabase },
         { LibraryRepositoryLive },
         { LibraryRepository },
       ] = await Promise.all([
@@ -116,9 +110,7 @@ const main = async () => {
         import("../src/modules/library/repository-live"),
         import("../src/modules/library/service"),
       ]);
-      const runtime = ManagedRuntime.make(
-        LibraryRepositoryLive.pipe(Layer.provide(DatabaseLive)),
-      );
+      const runtime = ManagedRuntime.make(LibraryRepositoryLive);
       try {
         const program = Effect.gen(function* () {
           const repository = yield* LibraryRepository;
@@ -128,6 +120,7 @@ const main = async () => {
         console.log(`Supabase connected: ${library.length} library entries.`);
       } finally {
         await runtime.dispose();
+        await closeDatabase();
       }
       break;
     }

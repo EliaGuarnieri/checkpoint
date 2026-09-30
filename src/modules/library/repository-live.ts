@@ -1,11 +1,8 @@
 import { eq, inArray } from "drizzle-orm";
-import { Clock, Data, Effect, Layer, Schema } from "effect";
+import { Effect, Layer } from "effect";
 
-import {
-  Database,
-  type DatabaseClient,
-} from "~/infrastructure/database/client";
-import { databaseFailure } from "~/infrastructure/database/errors";
+import { DatabaseUrl } from "~/infrastructure/config";
+import { getDatabase, type Database } from "~/infrastructure/database/client";
 import {
   companies,
   gameCompanies,
@@ -15,40 +12,31 @@ import {
   libraryEntries,
 } from "~/infrastructure/database/schema";
 import type { CatalogGame } from "~/modules/catalog/model";
-import {
-  LibraryGameSchema,
-  type LibraryFilters,
-  type LibraryGame,
-} from "~/modules/library/model";
+import type { LibraryFilters, LibraryGame } from "~/modules/library/model";
 import { filterLibraryGames } from "~/modules/library/query";
 import {
+  DatabaseUnavailable,
   LibraryEntryNotFound,
   LibraryRepository,
   LibraryOperation,
 } from "~/modules/library/service";
 
-class DatabaseDriverFailure extends Data.TaggedError("DatabaseDriverFailure")<{
-  readonly cause: unknown;
-}> {}
-
 const databaseEffect = <A>(
-  db: DatabaseClient,
   operation: LibraryOperation,
-  run: (db: DatabaseClient, now: Date) => Promise<A>,
+  run: (db: Database) => Promise<A>,
 ) =>
   Effect.gen(function* () {
-    const timestamp = yield* Clock.currentTimeMillis;
-    return yield* Effect.tryPromise({
-      try: () => run(db, new Date(timestamp)),
-      catch: (cause) => new DatabaseDriverFailure({ cause }),
-    }).pipe(
-      Effect.catchAll((error) => databaseFailure(operation, error.cause)),
-      Effect.withSpan(`library.database.${operation}`),
+    const databaseUrl = yield* DatabaseUrl.pipe(
+      Effect.mapError((cause) => new DatabaseUnavailable({ operation, cause })),
     );
+    return yield* Effect.tryPromise({
+      try: () => run(getDatabase(databaseUrl)),
+      catch: (cause) => new DatabaseUnavailable({ operation, cause }),
+    });
   });
 
 type DatabaseTransaction = Parameters<
-  Parameters<DatabaseClient["transaction"]>[0]
+  Parameters<Database["transaction"]>[0]
 >[0];
 
 const syncGameMetadata = async (
@@ -98,7 +86,6 @@ const syncGameMetadata = async (
 const upsertCatalogGame = async (
   transaction: DatabaseTransaction,
   game: CatalogGame,
-  now: Date,
 ) => {
   const rawgId = Number(game.id);
   const [stored] = await transaction
@@ -117,7 +104,7 @@ const upsertCatalogGame = async (
         title: game.title,
         coverUrl: game.coverUrl,
         releaseDate: game.releaseDate,
-        updatedAt: now,
+        updatedAt: new Date(),
       },
     })
     .returning({ id: games.id });
@@ -128,7 +115,7 @@ const upsertCatalogGame = async (
 };
 
 const loadLibraryGames = async (
-  db: DatabaseClient,
+  db: Database,
   gameId?: string,
 ): Promise<Array<LibraryGame>> => {
   const rows = await db
@@ -193,113 +180,101 @@ const loadLibraryGames = async (
   }));
 };
 
-export const LibraryRepositoryLive = Layer.effect(
-  LibraryRepository,
-  Effect.gen(function* () {
-    const client = yield* Database;
-    return {
-      list: (filters: LibraryFilters = {}) =>
-        databaseEffect(client, "listLibrary", (db) =>
-          loadLibraryGames(db),
-        ).pipe(
-          Effect.flatMap((rows) =>
-            Schema.decodeUnknown(Schema.Array(LibraryGameSchema))(rows).pipe(
-              Effect.orDie,
-            ),
-          ),
-          Effect.map((games) => filterLibraryGames(games, filters)),
-        ),
-      findById: (gameId) =>
-        databaseEffect(client, "findLibraryEntry", (db) =>
-          loadLibraryGames(db, gameId),
-        ).pipe(
-          Effect.flatMap(([game]) =>
-            game
-              ? Schema.decodeUnknown(LibraryGameSchema)(game).pipe(Effect.orDie)
-              : Effect.fail(new LibraryEntryNotFound({ gameId })),
-          ),
-        ),
-      addManualGame: (game) =>
-        databaseEffect(client, "addManualGame", (db, now) =>
-          db.transaction(async (transaction) => {
-            const rawgId = Number(game.id);
-            const [existing] = await transaction
-              .select({ id: games.id })
-              .from(libraryEntries)
-              .innerJoin(games, eq(libraryEntries.gameId, games.id))
-              .where(
-                Number.isFinite(rawgId)
-                  ? eq(games.rawgId, rawgId)
-                  : eq(games.slug, game.slug),
-              )
-              .limit(1);
-            if (existing) return existing.id;
+export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
+  list: (filters: LibraryFilters = {}) =>
+    databaseEffect("listLibrary", async (db) => {
+      const games = await loadLibraryGames(db);
+      return filterLibraryGames(games, filters);
+    }),
+  findById: (gameId) =>
+    databaseEffect("findLibraryEntry", (db) =>
+      loadLibraryGames(db, gameId),
+    ).pipe(
+      Effect.flatMap(([game]) =>
+        game
+          ? Effect.succeed(game)
+          : Effect.fail(new LibraryEntryNotFound({ gameId })),
+      ),
+    ),
+  addManualGame: (game) =>
+    databaseEffect("addManualGame", (db) =>
+      db.transaction(async (transaction) => {
+        const rawgId = Number(game.id);
+        const [existing] = await transaction
+          .select({ id: games.id })
+          .from(libraryEntries)
+          .innerJoin(games, eq(libraryEntries.gameId, games.id))
+          .where(
+            Number.isFinite(rawgId)
+              ? eq(games.rawgId, rawgId)
+              : eq(games.slug, game.slug),
+          )
+          .limit(1);
+        if (existing) return existing.id;
 
-            const gameId = await upsertCatalogGame(transaction, game, now);
-            await transaction
-              .insert(libraryEntries)
-              .values({ gameId, status: "backlog" })
-              .onConflictDoNothing();
-            return gameId;
-          }),
-        ),
-      refreshCatalogGame: (gameId, game) =>
-        databaseEffect(client, "refreshCatalogGame", (db, now) =>
-          db.transaction(async (transaction) => {
-            const [entry] = await transaction
-              .select({ gameId: libraryEntries.gameId })
-              .from(libraryEntries)
-              .where(eq(libraryEntries.gameId, gameId))
-              .limit(1);
-            if (!entry) return false;
+        const gameId = await upsertCatalogGame(transaction, game);
+        await transaction
+          .insert(libraryEntries)
+          .values({ gameId, status: "backlog" })
+          .onConflictDoNothing();
+        return gameId;
+      }),
+    ),
+  refreshCatalogGame: (gameId, game) =>
+    databaseEffect("refreshCatalogGame", (db) =>
+      db.transaction(async (transaction) => {
+        const [entry] = await transaction
+          .select({ gameId: libraryEntries.gameId })
+          .from(libraryEntries)
+          .where(eq(libraryEntries.gameId, gameId))
+          .limit(1);
+        if (!entry) return false;
 
-            await transaction
-              .update(games)
-              .set({
-                title: game.title,
-                slug: game.slug,
-                coverUrl: game.coverUrl,
-                releaseDate: game.releaseDate,
-                updatedAt: now,
-              })
-              .where(eq(games.id, gameId));
-            await syncGameMetadata(transaction, gameId, game);
-            return true;
-          }),
-        ).pipe(
-          Effect.flatMap((refreshed) =>
-            refreshed
-              ? Effect.void
-              : Effect.fail(new LibraryEntryNotFound({ gameId })),
-          ),
-        ),
-      update: (gameId, update) =>
-        databaseEffect(client, "updateLibraryEntry", (db, now) =>
-          db
-            .update(libraryEntries)
-            .set({ ...update, updatedAt: now })
-            .where(eq(libraryEntries.gameId, gameId))
-            .returning({ gameId: libraryEntries.gameId }),
-        ).pipe(
-          Effect.flatMap((rows) =>
-            rows.length > 0
-              ? Effect.void
-              : Effect.fail(new LibraryEntryNotFound({ gameId })),
-          ),
-        ),
-      remove: (gameId) =>
-        databaseEffect(client, "removeLibraryEntry", (db) =>
-          db
-            .delete(libraryEntries)
-            .where(eq(libraryEntries.gameId, gameId))
-            .returning({ gameId: libraryEntries.gameId }),
-        ).pipe(
-          Effect.flatMap((rows) =>
-            rows.length > 0
-              ? Effect.void
-              : Effect.fail(new LibraryEntryNotFound({ gameId })),
-          ),
-        ),
-    };
-  }),
-);
+        await transaction
+          .update(games)
+          .set({
+            title: game.title,
+            slug: game.slug,
+            coverUrl: game.coverUrl,
+            releaseDate: game.releaseDate,
+            updatedAt: new Date(),
+          })
+          .where(eq(games.id, gameId));
+        await syncGameMetadata(transaction, gameId, game);
+        return true;
+      }),
+    ).pipe(
+      Effect.flatMap((refreshed) =>
+        refreshed
+          ? Effect.void
+          : Effect.fail(new LibraryEntryNotFound({ gameId })),
+      ),
+    ),
+  update: (gameId, update) =>
+    databaseEffect("updateLibraryEntry", (db) =>
+      db
+        .update(libraryEntries)
+        .set({ ...update, updatedAt: new Date() })
+        .where(eq(libraryEntries.gameId, gameId))
+        .returning({ gameId: libraryEntries.gameId }),
+    ).pipe(
+      Effect.flatMap((rows) =>
+        rows.length > 0
+          ? Effect.void
+          : Effect.fail(new LibraryEntryNotFound({ gameId })),
+      ),
+    ),
+  remove: (gameId) =>
+    databaseEffect("removeLibraryEntry", (db) =>
+      db
+        .delete(libraryEntries)
+        .where(eq(libraryEntries.gameId, gameId))
+        .returning({ gameId: libraryEntries.gameId }),
+    ).pipe(
+      Effect.flatMap((rows) =>
+        rows.length > 0
+          ? Effect.void
+          : Effect.fail(new LibraryEntryNotFound({ gameId })),
+      ),
+    ),
+});

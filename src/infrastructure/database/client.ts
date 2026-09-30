@@ -2,13 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Context, Effect, Layer, Redacted } from "effect";
+import { Redacted } from "effect";
 import { Pool } from "pg";
 
 import * as schema from "~/infrastructure/database/schema";
-import { ConfigurationInvalid, DatabaseUrl } from "~/infrastructure/config";
 
-const poolOptions = (databaseUrl: Redacted.Redacted<string>) => {
+const makeDatabase = (databaseUrl: Redacted.Redacted<string>) => {
   const connectionString = Redacted.value(databaseUrl);
 
   let connectionUrl: URL;
@@ -43,7 +42,7 @@ const poolOptions = (databaseUrl: Redacted.Redacted<string>) => {
     }
   }
 
-  return {
+  const client = new Pool({
     connectionString: isSupabase ? connectionUrl.toString() : connectionString,
     max: isSupabase ? 1 : 10,
     ssl: isSupabase
@@ -56,47 +55,35 @@ const poolOptions = (databaseUrl: Redacted.Redacted<string>) => {
           servername: hostname,
         }
       : false,
-    connectionTimeoutMillis: 5_000,
-    idleTimeoutMillis: 30_000,
-    allowExitOnIdle: true,
-  };
+  });
+
+  return drizzle({ client, schema });
 };
 
-const makeDatabase = (client: Pool) => drizzle({ client, schema });
-export type DatabaseClient = ReturnType<typeof makeDatabase>;
+export type Database = ReturnType<typeof makeDatabase>;
 
-export class Database extends Context.Tag("checkpoint/Database")<
-  Database,
-  DatabaseClient
->() {}
+let database: { readonly url: string; readonly client: Database } | undefined;
 
-export const DatabaseLive = Layer.scoped(
-  Database,
-  Effect.gen(function* () {
-    const invalidConfiguration = (cause: unknown) =>
-      new ConfigurationInvalid({
-        setting: "DATABASE_URL / database TLS configuration",
-        cause: Redacted.make(cause),
-      });
-    const url = yield* DatabaseUrl.pipe(Effect.mapError(invalidConfiguration));
-    const options = yield* Effect.try({
-      try: () => poolOptions(url),
-      catch: invalidConfiguration,
-    });
-    const pool = yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        const client = new Pool(options);
-        // An idle connection error must not become an unhandled EventEmitter error.
-        client.on("error", (error) => {
-          console.error(
-            "Database idle connection failed",
-            Redacted.make(error),
-          );
-        });
-        return client;
-      }),
-      (client) => Effect.promise(() => client.end()),
-    );
-    return makeDatabase(pool);
-  }),
-);
+export const getDatabase = (
+  databaseUrl: Redacted.Redacted<string>,
+): Database => {
+  const url = Redacted.value(databaseUrl);
+  if (database) {
+    if (database.url !== url) {
+      throw new Error(
+        "DATABASE_URL changed after pool initialization; restart the server",
+      );
+    }
+    return database.client;
+  }
+
+  const client = makeDatabase(databaseUrl);
+  database = { url, client };
+  return client;
+};
+
+export const closeDatabase = async () => {
+  const active = database;
+  database = undefined;
+  if (active) await active.client.$client.end();
+};
