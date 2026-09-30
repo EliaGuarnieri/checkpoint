@@ -60,11 +60,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderLibrary() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({ ok: true, json: async () => entries }),
-  );
+function renderLibrary(
+  response: Promise<{
+    ok: boolean;
+    json: () => Promise<unknown>;
+  }> = Promise.resolve({ ok: true, json: async () => entries }),
+) {
+  vi.stubGlobal("fetch", vi.fn().mockReturnValue(response));
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -77,11 +79,112 @@ function renderLibrary() {
 
 function visibleLibraryEntryIds() {
   return screen
-    .getAllByRole("link")
+    .queryAllByRole("link")
     .map((link) => link.getAttribute("href")?.split("/").at(-1));
 }
 
+function statusCount(label: string) {
+  return screen.getByRole("button", { name: new RegExp(`^${label}`) })
+    .textContent;
+}
+
 describe("library filters", () => {
+  it("counts each section after the other criteria and keeps counts stable when switching section", async () => {
+    renderLibrary();
+    await screen.findByRole("link", { name: /Hades/ });
+
+    expect(screen.getByText("3 giochi")).toBeTruthy();
+    expect(statusCount("Tutti")).toBe("Tutti3");
+    expect(statusCount("In corso")).toBe("In corso2");
+    expect(statusCount("Completati")).toBe("Completati1");
+
+    fireEvent.click(screen.getByText("Filtri", { selector: "summary" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Genere" }), {
+      target: { value: "RPG" },
+    });
+
+    expect(screen.getByText("1 di 3 giochi")).toBeTruthy();
+    expect(visibleLibraryEntryIds()).toEqual(["baldurs-gate"]);
+    expect(statusCount("Tutti")).toBe("Tutti1");
+    expect(statusCount("In corso")).toBe("In corso0");
+    expect(statusCount("Completati")).toBe("Completati1");
+
+    fireEvent.click(screen.getByRole("button", { name: /^In corso/ }));
+    expect(screen.getByText("0 di 3 giochi")).toBeTruthy();
+    expect(visibleLibraryEntryIds()).toEqual([]);
+    expect(statusCount("Tutti")).toBe("Tutti1");
+    expect(statusCount("Completati")).toBe("Completati1");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Completati/ }));
+    expect(screen.getByText("1 di 3 giochi")).toBeTruthy();
+    expect(visibleLibraryEntryIds()).toEqual(["baldurs-gate"]);
+  });
+
+  it("applies title, genre, developer, publisher, and minimum rating to section counts", async () => {
+    renderLibrary();
+    await screen.findByRole("link", { name: /Hades/ });
+    fireEvent.click(screen.getByText("Filtri", { selector: "summary" }));
+
+    const criteria = [
+      { field: "Titolo", value: "Hades", visible: ["hades"], completed: 0 },
+      {
+        field: "Genere",
+        value: "RPG",
+        visible: ["baldurs-gate"],
+        completed: 1,
+      },
+      {
+        field: "Sviluppatore",
+        value: "Maddy",
+        visible: ["celeste"],
+        completed: 0,
+      },
+      {
+        field: "Publisher",
+        value: "Larian",
+        visible: ["baldurs-gate"],
+        completed: 1,
+      },
+    ];
+    for (const { field: name, value, visible, completed } of criteria) {
+      const field = screen.getByRole("textbox", { name });
+      fireEvent.change(field, { target: { value } });
+      expect(visibleLibraryEntryIds()).toEqual(visible);
+      expect(statusCount("Tutti")).toBe("Tutti1");
+      expect(statusCount("Completati")).toBe(`Completati${completed}`);
+      fireEvent.change(field, { target: { value: "" } });
+    }
+
+    const rating = screen.getByRole("slider", { hidden: true });
+    for (let value = 0; value < 9; value++) {
+      fireEvent.keyDown(rating, { key: "ArrowRight" });
+    }
+    expect(visibleLibraryEntryIds()).toEqual(["hades", "baldurs-gate"]);
+    expect(statusCount("Tutti")).toBe("Tutti2");
+    expect(statusCount("In corso")).toBe("In corso1");
+    expect(statusCount("Completati")).toBe("Completati1");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Titolo" }), {
+      target: { value: "Celeste" },
+    });
+    expect(screen.getByText("0 di 3 giochi")).toBeTruthy();
+    expect(visibleLibraryEntryIds()).toEqual([]);
+    expect(statusCount("Tutti")).toBe("Tutti0");
+    expect(statusCount("In corso")).toBe("In corso0");
+  });
+
+  it("shows an unavailable count during loading and after a failed request", async () => {
+    renderLibrary(new Promise(() => {}));
+    expect(screen.getByText("— giochi")).toBeTruthy();
+    expect(statusCount("Tutti")).toBe("Tutti—");
+    cleanup();
+
+    renderLibrary(Promise.reject(new Error("Network unavailable")));
+    await screen.findByText("Libreria non disponibile");
+    expect(screen.getByText("— giochi")).toBeTruthy();
+    expect(statusCount("Tutti")).toBe("Tutti—");
+  });
+
   it("resets status and advanced criteria from the panel while keeping the full collection visible", async () => {
     renderLibrary();
     await screen.findByRole("link", { name: /Hades/ });
@@ -150,7 +253,7 @@ describe("library filters", () => {
     await screen.findByRole("link", { name: /Hades/ });
 
     await user.click(screen.getByRole("combobox", { name: "Ordina libreria" }));
-    await user.click(screen.getByRole("option", { name: "Titolo A–Z" }));
+    await user.click(await screen.findByRole("option", { name: "Titolo A–Z" }));
     fireEvent.click(screen.getByRole("button", { name: /In corso/ }));
     fireEvent.click(screen.getByText("Filtri", { selector: "summary" }));
     expect(

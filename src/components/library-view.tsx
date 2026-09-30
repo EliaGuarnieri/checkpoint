@@ -71,27 +71,24 @@ export function LibraryView() {
     queryKey: ["library", "all"],
     queryFn: () => fetchJson(LibraryResponse, "/api/library"),
   });
-  const games = useMemo(
+  const entriesMatchingNonStatusCriteria = useMemo(
     () =>
       filterLibraryGames(library.data ?? [], {
         query,
-        status: status === "all" ? undefined : status,
         genre,
         developer,
         publisher,
         minimumRating: Number(minimumRating),
+      }),
+    [library.data, query, genre, developer, publisher, minimumRating],
+  );
+  const visibleEntries = useMemo(
+    () =>
+      filterLibraryGames(entriesMatchingNonStatusCriteria, {
+        status: status === "all" ? undefined : status,
         sort,
       }),
-    [
-      library.data,
-      query,
-      status,
-      genre,
-      developer,
-      publisher,
-      minimumRating,
-      sort,
-    ],
+    [entriesMatchingNonStatusCriteria, status, sort],
   );
   const activeFilters = [
     ...(status === "all"
@@ -142,9 +139,12 @@ export function LibraryView() {
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               La collezione
             </h2>
-            <span className="text-sm text-muted-foreground">
-              {library.data?.length ?? "—"}{" "}
-              {library.data?.length === 1 ? "gioco" : "giochi"}
+            <span className="text-sm text-muted-foreground" aria-live="polite">
+              {library.isSuccess && library.data
+                ? status === "all" && activeFilters.length === 0
+                  ? `${library.data.length} ${library.data.length === 1 ? "gioco" : "giochi"}`
+                  : `${visibleEntries.length} di ${library.data.length} ${library.data.length === 1 ? "gioco" : "giochi"}`
+                : "— giochi"}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -177,11 +177,13 @@ export function LibraryView() {
           <fieldset className="flex min-w-0 gap-1 overflow-x-auto pb-1">
             <legend className="sr-only">Filtra per stato</legend>
             {statuses.map((item) => {
-              const count =
-                item.value === "all"
-                  ? library.data?.length
-                  : library.data?.filter((game) => game.status === item.value)
-                      .length;
+              const count = library.isSuccess
+                ? item.value === "all"
+                  ? entriesMatchingNonStatusCriteria.length
+                  : entriesMatchingNonStatusCriteria.filter(
+                      (entry) => entry.status === item.value,
+                    ).length
+                : undefined;
               return (
                 <Button
                   key={item.value}
@@ -312,9 +314,9 @@ export function LibraryView() {
               <Skeleton key={index} className="aspect-[0.95] rounded-xl" />
             ))}
           </div>
-        ) : library.isError ? null : games.length ? (
+        ) : library.isError ? null : visibleEntries.length ? (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {games.map((game) => (
+            {visibleEntries.map((game) => (
               <Link
                 href={`/games/${game.id}`}
                 className="group block min-w-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground transition-[transform,box-shadow] duration-300 outline-none hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transform-none"
