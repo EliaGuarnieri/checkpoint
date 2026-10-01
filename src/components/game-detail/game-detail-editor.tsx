@@ -149,12 +149,7 @@ export function GameDetailEditor({ game }: { readonly game: LibraryGame }) {
               </Field>
             </div>
             <Field>
-              <FieldLabel htmlFor="note">
-                La tua nota{" "}
-                <span className="font-normal text-muted-foreground">
-                  Facoltativa
-                </span>
-              </FieldLabel>
+              <FieldLabel htmlFor="note">La tua nota</FieldLabel>
               <Textarea
                 id="note"
                 className="min-h-28"
