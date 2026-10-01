@@ -66,7 +66,7 @@ const startPostgres = Effect.gen(function* () {
     ["compose", "version"],
     "Docker Compose is unavailable. Install the Compose plugin, then run pnpm setup again.",
   );
-  console.log("Starting local PostgreSQL on port 5433...");
+  console.log("  🐘 Starting local PostgreSQL on port 5433...");
   yield* command(
     [
       "compose",
@@ -166,7 +166,7 @@ const applyMigrations = (url: Redacted.Redacted<string>) =>
 const checkLibrary = Effect.gen(function* () {
   const repository = yield* LibraryRepository;
   const entries = yield* repository.list();
-  console.log(`Database connected: ${entries.length} library entries.`);
+  console.log(`  🔌 Database connected: ${entries.length} library entries.`);
 });
 
 export const databaseCommand = (
@@ -179,11 +179,12 @@ export const databaseCommand = (
         new SetupError({ message: "Expected setup, migrate or check" }),
       );
     }
+    if (action === "setup") console.log("\n🎮 Checkpoint · setup\n");
     yield* Effect.try({
       try: () => {
         if (action === "setup" && !existsSync(".env")) {
           copyFileSync(".env.example", ".env", 1);
-          console.log("Created .env with local defaults.");
+          console.log("  📝 Created .env with local defaults.");
         }
         loadEnvConfig(process.cwd(), true);
       },
@@ -235,18 +236,19 @@ export const databaseCommand = (
     if (target === "local" && action === "setup") yield* startPostgres;
     if (action === "setup" || action === "migrate") {
       yield* applyMigrations(migrationSecret);
-      console.log("Database migrations applied.");
+      console.log("  ✅ Database migrations applied.");
     }
     if (action === "setup" && target === "local") {
       const seeded = yield* seedDemoLibrary;
       console.log(
         seeded
-          ? "Demo library created."
-          : "Existing library preserved; seed skipped.",
+          ? "  🌱 Demo library created."
+          : "  📚 Existing library preserved; seed skipped.",
       );
     }
     if (action !== "migrate") yield* checkLibrary;
-    if (action === "setup") console.log("Checkpoint is ready. Run: pnpm dev");
+    if (action === "setup")
+      console.log("\n🚀 Checkpoint is ready!\n\n  → Run: pnpm dev\n");
   }).pipe(
     // oxlint-disable-next-line effecttsgo/strict-effect-provide -- This CLI boundary supplies all repository dependencies once.
     Effect.provide(LibraryRepositoryLive),
@@ -273,9 +275,7 @@ export const runDatabaseCli = (supabaseOnly = false) => {
     if (Exit.isFailure(result)) {
       const message = Cause.failureOption(result.cause);
       console.error(
-        message._tag === "Some"
-          ? message.value.message
-          : "Database command failed.",
+        `\n❌ ${message._tag === "Some" ? message.value.message : "Database command failed."}\n`,
       );
       process.exitCode = 1;
     }
