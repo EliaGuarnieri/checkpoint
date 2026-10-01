@@ -1,14 +1,34 @@
-<h1>
+<div align="center">
+  <img src="src/app/icon.svg" alt="" width="64" height="64">
+  <h1>checkpoint</h1>
+  <p>Checkpoint è un diario personale per videogiochi.<br>Cerchi un gioco nel catalogo, lo aggiungi alla libreria e annoti stato, voto e nota.</p>
   <a href="https://checkpoint-green-one.vercel.app">
-    <img src="https://img.shields.io/github/deployments/EliaGuarnieri/checkpoint/Production?label=Vercel&amp;logo=vercel&amp;logoColor=white" alt="Stato del deployment Vercel" align="right">
+    <img src="https://img.shields.io/github/deployments/EliaGuarnieri/checkpoint/Production?label=Vercel&amp;logo=vercel&amp;logoColor=white" alt="Stato del deployment Vercel">
   </a>
-  <img src="src/app/icon.svg" alt="" width="36" height="36" align="absmiddle">
-  checkpoint
-</h1>
+  <p>La versione online è disponibile su <a href="https://checkpoint-green-one.vercel.app">checkpoint-green-one.vercel.app</a>.</p>
+</div>
 
-Checkpoint è un diario personale per videogiochi. Cerchi un gioco nel catalogo, lo aggiungi alla libreria e annoti stato, voto e nota.
+<p align="center">
+  <a href="#avvio-rapido">Avvio rapido</a> ·
+  <a href="#struttura-del-progetto">Struttura</a> ·
+  <a href="#architettura">Architettura</a> ·
+  <a href="#uso-dellai-e-percorso-di-apprendimento">Percorso di apprendimento</a>
+</p>
 
-La versione online è disponibile su [checkpoint-green-one.vercel.app](https://checkpoint-green-one.vercel.app).
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/screenshots/library-cropped.png" alt="Libreria di Checkpoint con copertine e filtri" width="100%">
+      <br><sub>Libreria con copertine e filtri</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/screenshots/game-detail.png" alt="Dettaglio di Baldur's Gate III con stato, voto e nota" width="100%">
+      <br><sub>Dettaglio con stato, voto e nota</sub>
+    </td>
+  </tr>
+</table>
+
+---
 
 ## Perché questo progetto
 
@@ -17,17 +37,6 @@ Sono appassionato di videogiochi e ho scelto un dominio familiare per iniziare a
 Prima di questo progetto conoscevo Effect solo di nome, soprattutto per la gestione degli errori. L'obiettivo era costruire un piccolo progetto che la utilizzasse e rendere visibile il mio percorso di apprendimento attraverso il codice e le scelte tecniche.
 
 Ho mantenuto il dominio contenuto per dedicare attenzione a Effect e alla separazione tra contratti dei servizi e adapter. L'app è un prototipo single-user; autenticazione e integrazioni aggiuntive sono rimaste fuori dal perimetro.
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/library-cropped.png" alt="Libreria di Checkpoint con copertine e filtri" width="100%">
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/game-detail.png" alt="Dettaglio di Baldur's Gate III con stato, voto e nota" width="100%">
-    </td>
-  </tr>
-</table>
 
 ## Avvio rapido
 
@@ -60,7 +69,8 @@ pnpm dev
 
 Per usare RAWG in locale è necessario aggiungere la chiave `RAWG_API_KEY` a `.env`. La chiave si ottiene registrandosi su [https://rawg.io/apidocs](https://rawg.io/apidocs).
 
-### Giochi ricercabili nel catalogo demo
+<details>
+<summary><strong>Giochi ricercabili nel catalogo demo</strong></summary>
 
 Senza chiave RAWG, l'app usa il catalogo demo che comprende questi 20 giochi:
 
@@ -86,6 +96,8 @@ Senza chiave RAWG, l'app usa il catalogo demo che comprende questi 20 giochi:
 - Undertale
 
 L'elenco è definito in [`src/modules/catalog/demo-data.ts`](src/modules/catalog/demo-data.ts). `GameCatalogDemo` fornisce il servizio `GameCatalog` tramite un `Layer` di Effect: ricerca e dettaglio usano lo stesso contratto dell'adapter RAWG, con dati locali deterministici.
+
+</details>
 
 ## Struttura del progetto
 
@@ -172,7 +184,9 @@ Ho scelto questa struttura per studiare dipendenze ed errori in Effect. Richiede
 
 ## Uso dell'AI e percorso di apprendimento
 
-Ho chiesto all'AI di creare un primo impianto del progetto su cui studiare Effect, indicando come vincoli l'organizzazione in moduli funzionali, l'uso di TanStack Query per la cache e un ruolo centrale per Effect.
+In questo progetto ho usato l'AI sia come supporto allo studio di Effect sia nello sviluppo dell'applicazione. Il modo di lavorare con l'assistente è cambiato durante il percorso, mantenendo al centro la comprensione del codice e delle scelte progettuali.
+
+Inizialmente ho chiesto all'AI di creare un primo impianto del progetto su cui studiare Effect, indicando come vincoli l'organizzazione in moduli funzionali, l'uso di TanStack Query per la cache e un ruolo centrale per Effect.
 
 Ho poi chiesto una code review e fatto trasformare i rilievi in esercizi, invece di applicare direttamente le correzioni. Ho risolto gli esercizi personalmente e sottoposto le soluzioni all'assistente per la correzione. Questo mi ha permesso di studiare Effect lavorando sui problemi del progetto, con un riscontro sulle soluzioni e sulle mie motivazioni.
 
@@ -184,7 +198,7 @@ Conclusa la fase di studio ed esercitazione, ho iniziato a sviluppare l'applicaz
 
 `grill-with-docs` e `implement` fanno parte delle [skill di AI Hero](https://www.aihero.dev/skills). Per il lavoro sull'interfaccia ho usato soprattutto [Impeccable](https://impeccable.style/). Le skill usate sono conservate in `.agents/skills`; le istruzioni e la documentazione del repository hanno fornito agli assistenti il contesto del progetto e l'obiettivo di apprendimento.
 
-## Cosa ho imparato e cosa approfondirei
+## Cosa ho imparato
 
 Il progetto mi ha dato una prima comprensione di Effect, soprattutto nella gestione degli errori e delle dipendenze. La sintassi richiede pratica, ma la difficoltà maggiore resta l'ampiezza dell'ecosistema: capire quali strumenti usare richiede tempo.
 
