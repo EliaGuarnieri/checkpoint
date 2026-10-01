@@ -38,10 +38,28 @@ export function AppShell({ children }: { readonly children: ReactNode }) {
       <footer className="mx-auto w-full max-w-362.5 px-4 pb-6 sm:px-6 lg:px-10">
         <Separator className="mb-5" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>Checkpoint · Il tuo diario di gioco</span>
-          <a href="https://rawg.io" target="_blank" rel="noreferrer">
-            Game data provided by RAWG
-          </a>
+          <span>
+            Made with ❤️ by{" "}
+            <a
+              href="https://github.com/EliaGuarnieri"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium underline underline-offset-4"
+            >
+              Elia Guarnieri
+            </a>
+          </span>
+          <span>
+            Game data provided by{" "}
+            <a
+              href="https://rawg.io"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium underline underline-offset-4"
+            >
+              RAWG
+            </a>
+          </span>
         </div>
       </footer>
     </div>
