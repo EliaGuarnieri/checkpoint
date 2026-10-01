@@ -1,6 +1,14 @@
-# Checkpoint
+<h1>
+  <a href="https://checkpoint-green-one.vercel.app">
+    <img src="https://img.shields.io/github/deployments/EliaGuarnieri/checkpoint/Production?label=Vercel&amp;logo=vercel&amp;logoColor=white" alt="Stato del deployment Vercel" align="right">
+  </a>
+  <img src="src/app/icon.svg" alt="" width="36" height="36" align="absmiddle">
+  checkpoint
+</h1>
 
 Checkpoint è un diario personale per videogiochi. Cerchi un gioco nel catalogo, lo aggiungi alla libreria e annoti stato, voto e nota.
+
+La versione online è disponibile su [checkpoint-green-one.vercel.app](https://checkpoint-green-one.vercel.app).
 
 ## Perché questo progetto
 
@@ -23,31 +31,38 @@ Ho mantenuto il dominio contenuto per dedicare attenzione a Effect e alla separa
 
 ## Avvio rapido
 
-Servono Node.js 22, pnpm e Docker avviato con Docker Compose.
+Requisiti:
+
+- Node.js 22
+- pnpm
+- Docker avviato, con Docker Compose disponibile
 
 ```bash
-pnpm install --frozen-lockfile
+pnpm install
 pnpm setup
 pnpm dev
 ```
 
-Apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` con i valori locali se manca, avvia PostgreSQL su `localhost:5433`, applica le migration e inserisce quattro voci dimostrative se la libreria è vuota. Senza chiave RAWG, il catalogo demo permette di cercare, aggiungere giochi e aggiornare i metadati senza servizi esterni; le copertine dimostrative sono incluse nel repository.
+`pnpm setup` prepara l'ambiente locale (vedi [setup.sh](scripts/setup.sh)):
 
-Puoi rilanciare `pnpm setup`: conserva il tuo `.env` e, se la libreria contiene già voci, non reinserisce i giochi eliminati e non modifica stato, voto o nota. Se svuoti completamente la libreria, il setup inserisce nuovamente i dati demo. Il database rimane attivo e conserva i dati in un volume Docker. Per fermarlo usa `docker compose stop postgres`.
+1. Crea `.env` con i valori locali, se il file non esiste.
+2. Avvia PostgreSQL su `localhost:5433` tramite Docker Compose.
+3. Applica le migration al database.
+4. Inserisce quattro voci dimostrative, se la libreria è vuota.
 
-Per usare RAWG anche in locale, aggiungi `RAWG_API_KEY` a `.env`. Per usare Supabase, configura le connessioni come descritto sotto: il setup applica le migration e verifica la connessione, senza inserire dati demo. Gli URL PostgreSQL diversi dal container del progetto e da Supabase vengono rifiutati. Se hai già un `.env` Supabase, il setup continua a usare quello; per passare al database locale imposta `DATABASE_URL` come in `.env.example` e svuota `DATABASE_MIGRATION_URL`.
+### Variabili d'ambiente
 
-```bash
-pnpm test
-pnpm typecheck
-pnpm lint
-pnpm check      # lint + typecheck + test
-pnpm build
-```
+| Variabile                | Uso                                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Connessione al database locale o al Transaction pooler Supabase.                                      |
+| `DATABASE_MIGRATION_URL` | Connessione per le migration. In locale può essere omessa; con Supabase è obbligatoria.               |
+| `RAWG_API_KEY`           | Seleziona il catalogo RAWG. Senza chiave, in locale viene usato il demo; con Supabase è obbligatoria. |
+
+Per usare RAWG in locale è necessario aggiungere la chiave `RAWG_API_KEY` a `.env`. La chiave si ottiene registrandosi su [https://rawg.io/apidocs](https://rawg.io/apidocs).
 
 ### Giochi ricercabili nel catalogo demo
 
-Con il database locale e `RAWG_API_KEY` assente o vuota, puoi cercare questi 20 giochi:
+Senza chiave RAWG, l'app usa il catalogo demo che comprende questi 20 giochi:
 
 - Baldur's Gate III
 - Celeste
@@ -70,8 +85,6 @@ Con il database locale e `RAWG_API_KEY` assente o vuota, puoi cercare questi 20 
 - The Witcher 3: Wild Hunt
 - Undertale
 
-La ricerca trova anche parti del titolo e ignora maiuscole e minuscole. Per esempio, `portal` restituisce Portal e Portal 2, `souls` trova Dark Souls III e `witcher` trova The Witcher 3: Wild Hunt. I giochi hanno copertine dimostrative locali e possono essere aggiunti alla libreria o aggiornati senza chiamare RAWG.
-
 L'elenco è definito in [`src/modules/catalog/demo-data.ts`](src/modules/catalog/demo-data.ts). `GameCatalogDemo` fornisce il servizio `GameCatalog` tramite un `Layer` di Effect: ricerca e dettaglio usano lo stesso contratto dell'adapter RAWG, con dati locali deterministici.
 
 ## Struttura del progetto
@@ -84,149 +97,99 @@ checkpoint/
 │   ├── app/                       Pagine Next.js e Route Handler HTTP
 │   │   └── api/                   Endpoint del catalogo e della libreria
 │   ├── modules/
-│   │   ├── catalog/               Modelli, contratto GameCatalog, adapter RAWG e fake
+│   │   ├── catalog/               Modelli, contratto GameCatalog, adapter RAWG e demo,
+│   │   │                          dati demo e hook TanStack Query
 │   │   └── library/               Modelli, contratto LibraryRepository e adapter
-│   │                              PostgreSQL e in memoria, filtri e test didattici
+│   │                              PostgreSQL e in memoria, filtri, hook e test didattici
 │   ├── infrastructure/            Configurazione, composizione dei Layer e confine HTTP
-│   │   └── database/              Client PostgreSQL e schema Drizzle
+│   │   └── database/              Client PostgreSQL, schema Drizzle e validazione
+│   │                              della destinazione del database
 │   ├── components/                Interfaccia dell'applicazione
 │   │   └── ui/                    Componenti shadcn/ui
 │   ├── lib/                       Client API e utilità di navigazione
-│   └── styles/                    Stili globali e tipografia
+│   └── styles/                    Stili globali
+├── public/                        Risorse statiche
 ├── drizzle/                       Migration SQL e metadati Drizzle
 ├── scripts/                       Setup e comandi per PostgreSQL locale e Supabase
 ├── compose.yaml                   PostgreSQL locale con volume persistente
 ├── certs/                         Certificato CA per la connessione Supabase
-├── docs/
-│   ├── spec.md                    Specifica dei flussi applicativi
-│   ├── adr/                       Decisioni sul perimetro
-│   ├── agents/                    Convenzioni per il lavoro degli assistenti AI
-│   ├── brand/                     Materiali grafici
-│   └── screenshots/               Immagini dell'applicazione
+├── docs/                          Documentazione, decisioni di architettura,
+│                                  convenzioni per gli assistenti AI e materiali grafici
 ├── .agents/skills/                Skill installate nel progetto
+├── .impeccable/                   Configurazione e materiali di design e revisione
+│                                  dell'interfaccia prodotti con Impeccable
 ├── AGENTS.md                      Istruzioni di repository per gli assistenti AI
+├── CLAUDE.md                      Rimando ad AGENTS.md per Claude Code
 ├── CONTEXT.md                     Vocabolario del dominio
 ├── CODING_STANDARDS.md            Convenzioni di codice
 ├── PRODUCT.md                     Indicazioni di prodotto
-├── DESIGN.md                      Indicazioni per l'interfaccia
-└── .env.example                   Variabili necessarie per l'avvio
+└── DESIGN.md                      Indicazioni per l'interfaccia
 ```
 
-Per seguire Effect nel codice, partirei da [`src/modules/library/service.ts`](src/modules/library/service.ts), che dichiara il contratto e gli errori del repository, e dal [test con l'adapter in memoria](src/modules/library/repository-memory.test.ts), che mostra come usarlo. Il [Route Handler della libreria](src/app/api/library/route.ts) compone catalogo e repository nel flusso di aggiunta; [`app-layer.ts`](src/infrastructure/app-layer.ts) fornisce le implementazioni live.
+Per seguire Effect nel codice, suggerisco questo ordine di lettura:
+
+1. [`scripts/database.ts`](scripts/database.ts): l'inizializzazione dell'ambiente e del database. Usa Effect per coordinare configurazione, avvio di PostgreSQL locale, migration e dati dimostrativi, gestendo gli errori dei comandi.
+2. [`src/modules/`](src/modules): i moduli del catalogo e della libreria. Contengono modelli, contratti dei servizi, errori e adapter, oltre agli hook per il client e ai test.
+3. [`src/infrastructure/`](src/infrastructure): la configurazione e la composizione dell'app. Legge e valida le variabili d'ambiente, fornisce i servizi tramite i `Layer` e gestisce l'accesso al database e la conversione dei risultati e degli errori in risposte HTTP.
+4. [`src/app/api/`](src/app/api): i flussi esposti dalle API.
 
 ## Architettura
 
 ```mermaid
 flowchart LR
-  UI[Next.js + TanStack Query] --> API[Route Handlers]
+  UI[Next.js + TanStack Query] --> API[Route Handler + Effect]
   API --> Catalog[GameCatalog]
   API --> Library[LibraryRepository]
-  Catalog --> Rawg[RAWG API]
-  Library --> Drizzle[Drizzle ORM]
-  Drizzle --> Postgres[(PostgreSQL)]
+  Catalog --> RawgAdapter[Adapter RAWG]
+  Catalog --> Demo[Adapter demo con dati locali]
+  RawgAdapter --> Rawg[RAWG API]
+  Library --> Repository[Adapter PostgreSQL]
+  Repository --> Drizzle[Drizzle ORM + pg]
+  Drizzle --> Postgres[(PostgreSQL locale o Supabase)]
 ```
 
 I modelli, i contratti dei servizi e i relativi adapter sono organizzati in `src/modules`. `src/infrastructure` contiene la configurazione, la composizione dei `Layer`, il confine HTTP e l'accesso al database.
 
-### Come viene usato Effect
+`app-layer.ts` fornisce le implementazioni ai programmi dei Route Handler in base alla configurazione:
 
-- `Context.Tag` dichiara `GameCatalog` e `LibraryRepository`
-- `Layer` fornisce gli adapter live all'app e quelli fake o in memoria ai test
-- `Schema` valida gli input HTTP e le risposte RAWG
-- `Data.TaggedError` distingue errori del catalogo, del database e voci mancanti
-- `Config` legge la configurazione e `Redacted` rappresenta i segreti.
+- Con PostgreSQL locale e senza chiave RAWG, usa il catalogo demo con dati e copertine inclusi nel repository.
+- Con PostgreSQL locale e una chiave RAWG, usa il catalogo RAWG.
+- Con Supabase, usa il catalogo RAWG e richiede la chiave.
 
-TanStack Query gestisce query, mutation e invalidazione della cache nel browser. I programmi Effect gestiscono i flussi del server e le loro dipendenze; il client usa anche `Schema` per validare le risposte API. Drizzle gestisce le query SQL; le interfacce dei repository restituiscono valori `Effect`.
-
-Il dettaglio del catalogo è una lettura: può mostrare una copertina mancante senza richiedere PostgreSQL o aggiornare uno snapshot. L'aggiunta compone il caricamento da RAWG con `LibraryRepository.addManualGame`; l'adapter PostgreSQL salva snapshot e voce personale nella stessa transazione e restituisce l'ID della voce. La transazione appartiene all'adapter perché `Effect` descrive la sequenza e gli errori, ma non rende atomiche da solo due scritture SQL.
-
-Aggiungere di nuovo un gioco già presente restituisce la stessa voce senza cambiare i metadati salvati. Nella scheda della libreria, **Aggiorna dati del gioco** ricarica esplicitamente i metadati RAWG e conserva stato, voto e nota.
-
-La politica di filtri e ordinamento vive in `src/modules/library/query.ts`. Browser e due adapter la usano con le stesse regole; l'adapter PostgreSQL carica le voci e i metadati con tre query, indipendentemente dal numero di voci.
+La libreria dell'app è sempre persistita in PostgreSQL, anche usando il catalogo demo. L'adapter in memoria è usato nei test ed è escluso dal diagramma. La scelta del catalogo avviene nella composizione dei `Layer`: i flussi applicativi continuano a richiedere lo stesso servizio `GameCatalog`.
 
 ### Servizi e adapter
 
-I file `service.ts` dichiarano cosa possono fare `GameCatalog` e `LibraryRepository` e quali errori possono restituire. Le implementazioni sono negli adapter: `rawg-live.ts` chiama RAWG, `repository-live.ts` usa Drizzle e PostgreSQL, `repository-memory.ts` mantiene lo stato in memoria a scopo di test.
+La separazione tra servizi e adapter si può leggere attraverso questi file:
 
-Un programma richiede il servizio attraverso `Context.Tag`; un `Layer` gli fornisce l'implementazione. Nel test posso quindi comporre aggiunta, aggiornamento e lettura di una voce usando lo stesso contratto del repository live, senza collegarmi al database.
+1. I file `service.ts` di [catalogo](src/modules/catalog/service.ts) e [libreria](src/modules/library/service.ts) definiscono le operazioni disponibili e i possibili errori. `Context.Tag` identifica il servizio che un programma può richiedere.
+2. Per il catalogo, [`rawg-live.ts`](src/modules/catalog/rawg-live.ts) chiama RAWG, mentre [`demo.ts`](src/modules/catalog/demo.ts) usa dati locali. Entrambi forniscono il servizio `GameCatalog`.
+3. Per la libreria, [`repository-live.ts`](src/modules/library/repository-live.ts) usa Drizzle e PostgreSQL; [`repository-memory.ts`](src/modules/library/repository-memory.ts) conserva i dati in memoria per i test. Entrambi forniscono `LibraryRepository`.
+4. [`app-layer.ts`](src/infrastructure/app-layer.ts) compone le implementazioni usate dall'app. I `Layer` collegano i contratti agli adapter; i programmi richiedono i servizi senza scegliere come accedere ai dati.
+5. [`repository-memory.test.ts`](src/modules/library/repository-memory.test.ts) mostra questa separazione in uso: il test compone aggiunta, aggiornamento e lettura di una voce, fornendo il repository in memoria senza collegarsi al database.
 
-Questa separazione è il punto su cui ho voluto concentrare il progetto. Permette di leggere la sequenza delle operazioni separatamente dai dettagli di rete e persistenza. Richiede contratti e composizione espliciti anche per un'app piccola, ma offre un esempio concreto per studiare dipendenze ed errori in Effect.
+Ho scelto questa struttura per studiare dipendenze ed errori in Effect. Richiede contratti e composizione espliciti anche per un'app piccola evidenziandone i flussi e le interazioni.
 
-## Percorso di apprendimento e uso dell'AI
+## Uso dell'AI e percorso di apprendimento
 
-Ho chiesto all'AI di inizializzare il progetto specificando che il progetto fosse organizzato in moduli funzionali, che usasse TanStack Query per la gestione della cache e che desse un ruolo centrale a Effect. A partire da questi vincoli, l'AI ha proposto la struttura e la separazione tra contratti dei servizi e adapter.
+Ho chiesto all'AI di creare un primo impianto del progetto su cui studiare Effect, indicando come vincoli l'organizzazione in moduli funzionali, l'uso di TanStack Query per la cache e un ruolo centrale per Effect.
 
-L'implementazione iniziale del progetto è stata realizzata interamente dall'AI per avere una base concreta su cui costruire esercizi. Ho poi chiesto una code review e, invece di applicare direttamente le correzioni, ho chiesto all'assistente di trasformare i rilievi in esercizi da risolvere io e da sottoporre alla sua correzione. Il codice del progetto diventava così il materiale su cui studiare Effect.
+Ho poi chiesto una code review e fatto trasformare i rilievi in esercizi, invece di applicare direttamente le correzioni. Ho risolto gli esercizi personalmente e sottoposto le soluzioni all'assistente per la correzione. Questo mi ha permesso di studiare Effect lavorando sui problemi del progetto, con un riscontro sulle soluzioni e sulle mie motivazioni.
 
-I lavori successivi hanno seguito il metodo con cui uso l'AI anche nel mio lavoro quotidiano:
+Conclusa la fase di studio ed esercitazione, ho iniziato a sviluppare l'applicazione vera e propria seguendo il metodo con cui uso l'AI anche nel mio lavoro quotidiano:
 
-1. Ideazione attraverso uno scambio di idee con l'assistente, con la skill `grill-with-docs`, per discutere le scelte e documentare le decisioni.
-2. Implementazione con la skill `implement`, a partire dal lavoro definito nella fase precedente.
-3. Code review svolta da me con l'ausilio delle evidenze emerse durante l'implementazione.
+1. Discussione delle scelte con l'assistente, usando la skill `grill-with-docs` per definire il lavoro e documentare le decisioni.
+2. Implementazione con la skill `implement`, sulla base di quanto definito.
+3. Code review svolta da me, con il supporto delle evidenze raccolte durante l'implementazione.
 
-`grill-with-docs` e `implement` fanno parte delle [skill di AI Hero](https://www.aihero.dev/skills), che ho usato per lo sviluppo e la revisione. Per il lavoro sull'interfaccia ho usato soprattutto [Impeccable](https://impeccable.style/).
+`grill-with-docs` e `implement` fanno parte delle [skill di AI Hero](https://www.aihero.dev/skills). Per il lavoro sull'interfaccia ho usato soprattutto [Impeccable](https://impeccable.style/). Le skill usate sono conservate in `.agents/skills`; le istruzioni e la documentazione del repository hanno fornito agli assistenti il contesto del progetto e l'obiettivo di apprendimento.
 
-Tutte le skill usate durante il lavoro sono conservate nel repository nella cartella `.agents/skills`.
+## Cosa ho imparato e cosa approfondirei
 
-`AGENTS.md` raccoglie le regole specifiche del repository, incluso l'obiettivo di rendere le spiegazioni su Effect utili all'apprendimento.
+Il progetto mi ha dato una prima comprensione di Effect, soprattutto nella gestione degli errori e delle dipendenze. La sintassi richiede pratica, ma la difficoltà maggiore resta l'ampiezza dell'ecosistema: capire quali strumenti usare richiede tempo.
 
-`CONTEXT.md` raccoglie il vocabolario del dominio.
-
-`CODING_STANDARDS.md` raccoglie le convenzioni di codice.
-
-`DESIGN.md` raccoglie le indicazioni per l'interfaccia.
-
-La cartella `docs` contiene screenshot, specifica dei flussi applicativi, decisioni di architettura e convenzioni per il lavoro con gli assistenti AI.
-
-## Cosa ho imparato
-
-La filosofia di Effect mi sembra abbastanza chiara. La sintassi può spaventare all'inizio, ma lavorandoci l'ho trovata meno insolita di quanto sembrasse. A colpirmi di più è stata l'ampiezza dell'ecosistema: orientarsi tra i suoi concetti richiede tempo e considero la curva di apprendimento molto ripida, con benefici che credo possano ripagare l'investimento.
-
-La gestione degli errori e delle dipendenze è la parte che mi interessa di più. Nel progetto ho iniziato a esplorarla studiando gli errori dichiarati nei contratti dei servizi e il modo in cui i `Layer` forniscono gli adapter ai programmi. Il repository in memoria offre un esempio concreto di come eseguire le operazioni della libreria senza dipendere da PostgreSQL.
+In generale, Effect mi sembra offrire una buona esperienza di sviluppo, aiutando a organizzare il codice in parti indipendenti. Trovo interessante la distinzione tra servizi (`Context`), che descrivono le capacità disponibili, e adapter (`Layer`), che ne forniscono le implementazioni. Permette di cambiare il comportamento di un programma sostituendo gli adapter, senza riscrivere il flusso delle operazioni. Trovo utile anche la distinzione tra errori previsti, dichiarati nei tipi e gestibili dal programma, e difetti inattesi: aiuta a rendere espliciti i fallimenti da considerare nel flusso applicativo.
 
 ## Cosa approfondirei con più tempo
 
-Vorrei studiare [ManagedRuntime](https://effect.website/docs/v3/runtime#managedruntime) per integrare più a fondo Effect con framework come Next.js, che uso quotidianamente. Permette di costruire un runtime a partire da un `Layer`; mi interessa capire come riutilizzare i servizi tra diverse esecuzioni e gestirne il ciclo di vita nel framework. Nel progetto attuale i Route Handler forniscono i `Layer` ai programmi tramite `Effect.provide`.
-
-Approfondirei anche la [configurazione in Effect](https://effect.website/docs/v4/configuration). Nel progetto è appena accennata, con la lettura e la validazione delle variabili d'ambiente. Nel mio lavoro quotidiano su una piattaforma multitenant, il setup tramite file di configurazione può diventare complesso e difficile da leggere. Vorrei verificare se la composizione e la validazione delle configurazioni con Effect possano semplificarlo.
-
-## Configurazione dei servizi esterni
-
-L'app usa PostgreSQL locale o Supabase per la persistenza. Il database locale può usare il catalogo demo o RAWG; con Supabase la chiave RAWG è obbligatoria. I test didattici usano adapter forniti esplicitamente e non richiedono credenziali.
-
-### Database Supabase
-
-Puoi usare Supabase anche durante lo sviluppo, in alternativa al container locale. Drizzle accede al database attraverso il `LibraryRepository` di Effect. Per configurare le connessioni:
-
-1. Nel progetto Supabase, apri **Connect** e copia l'URI del **Transaction pooler** (porta `6543`). Sostituisci il segnaposto della password e codifica i caratteri speciali della password nell'URI.
-2. Imposta l'URI come `DATABASE_URL` tra le variabili **server** dell'hosting. Non usare il prefisso `NEXT_PUBLIC_`: la connessione al database avviene solo nei Route Handler.
-3. Configura `.env` nel repository con `DATABASE_URL` uguale all'URI del Transaction pooler e `DATABASE_MIGRATION_URL` uguale all'URI della **Direct connection**. Il file è ignorato da Git ed è usato sia da `pnpm dev` sia dagli script Supabase. Se la rete locale non supporta IPv6, usa l'URI del **Session pooler** (porta `5432`) per `DATABASE_MIGRATION_URL`.
-4. Su un nuovo database, esegui `pnpm db:migrate` e poi `pnpm db:check:supabase`. `pnpm db:migrate:supabase` è un alias dello stesso comando di migrazione. Il primo comando applica le migration con TLS verificato; il secondo legge la libreria tramite il `LibraryRepository` live.
-
-Il client limita a una connessione per istanza quando l'host è Supabase. Verifica la CA e il nome host usando il certificato pubblico `certs/supabase-ca.crt`, scaricato da **Database → Settings → Download certificate**; aggiorna questo file se Supabase ruota la CA. Il driver `pg` permette di usare il pooler transaction senza il pipelining di Postgres.js. La migration `0002_enable_rls` abilita RLS senza policy sulle sei tabelle dell'app: i ruoli `anon` e `authenticated` non possono leggere o modificare le voci personali, mentre la connessione PostgreSQL del server continua a funzionare. [Connessioni Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Sicurezza della Data API](https://supabase.com/docs/guides/api/securing-your-api).
-
-Con Supabase non serve Docker. Gli script verificano che le due connessioni appartengano allo stesso progetto. `pnpm db:migrate` e `pnpm db:check` funzionano anche con il database locale; i comandi con suffisso `:supabase` accettano soltanto Supabase. Il test didattico usa il repository in memoria e parte con `pnpm test`, senza database o servizi esterni.
-
-Le variabili dell'app sono descritte in `src/infrastructure/config.ts` con `Config` di Effect:
-
-| Variabile                | Regola                                                                                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Database del progetto su `localhost:5433/checkpoint` o `127.0.0.1:5433/checkpoint`, oppure Transaction pooler Supabase sulla porta `6543`.                                    |
-| `DATABASE_MIGRATION_URL` | In locale, se manca o è vuota, usa `DATABASE_URL`. Su Supabase è obbligatoria e deve usare la connessione diretta o Session pooler dello stesso progetto.                     |
-| `RAWG_API_KEY`           | In locale è facoltativa: assente o vuota seleziona il catalogo demo. Su Supabase è obbligatoria. Una chiave presente seleziona RAWG senza fallback al demo in caso di errore. |
-
-Le URL e la chiave RAWG sono valori `Redacted`. Next.js e gli script caricano la configurazione con le stesse regole di precedenza, incluse le variabili già presenti nel processo e i file `.env.local`. Sull'hosting le variabili vanno configurate lato server. Il repository in memoria è usato nei test; l'app locale usa il repository PostgreSQL anche con il catalogo demo.
-
-Poiché l'app usa soltanto Drizzle, puoi disattivare la **Data API** nelle impostazioni API di Supabase. Il prototipo non ha autenticazione: se pubblichi l'app senza limitare l'accesso, chiunque raggiunga i suoi endpoint può modificare l'unica libreria personale. [Drizzle e Data API](https://supabase.com/docs/guides/database/drizzle).
-
-### Catalogo RAWG
-
-Per cercare nel catalogo live, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e impostala in `.env`:
-
-```env
-RAWG_API_KEY=la-tua-chiave
-```
-
-Non committare `.env`. Senza chiave, il database locale usa il catalogo demo; con Supabase le richieste API restituiscono un errore di configurazione. L'interfaccia mostra l'attribuzione RAWG.
-
-La ricerca usa una sola richiesta alla lista RAWG e restituisce fino a sei anteprime con titolo, copertina, data e generi. Quando scegli **Aggiungi**, il client invia l'ID: il server carica il dettaglio RAWG, inclusi sviluppatori ed editori, e salva lo snapshot nella libreria. Cercare non scrive nel database.
+Vorrei approfondire [ManagedRuntime](https://effect.website/docs/v3/runtime#managedruntime) per capire come gestire i servizi di Effect nel ciclo di vita di un framework come Next.js, che uso quotidianamente. Mi interessa anche la [configurazione in Effect](https://effect.website/docs/v3/configuration) avendo avuto esperienza nello sviluppo di applicazioni multitenant, vorrei capire se la libreria possa semplificarne la composizione e la validazione mantenendo leggibili le configurazioni.
