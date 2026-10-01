@@ -66,7 +66,7 @@ const startPostgres = Effect.gen(function* () {
     ["compose", "version"],
     "Docker Compose is unavailable. Install the Compose plugin, then run pnpm setup again.",
   );
-  console.log("  🐘 Starting local PostgreSQL on port 5433...");
+  console.log("  Starting local PostgreSQL on port 5433...");
   yield* command(
     [
       "compose",
@@ -80,6 +80,7 @@ const startPostgres = Effect.gen(function* () {
     ],
     "PostgreSQL could not start or become ready. Check Docker and docker compose logs postgres, then retry.",
   );
+  console.log("  ✓ Local PostgreSQL is ready on port 5433.");
 });
 
 const projectRef = (url: URL) => {
@@ -166,7 +167,7 @@ const applyMigrations = (url: Redacted.Redacted<string>) =>
 const checkLibrary = Effect.gen(function* () {
   const repository = yield* LibraryRepository;
   const entries = yield* repository.list();
-  console.log(`  🔌 Database connected: ${entries.length} library entries.`);
+  console.log(`  ✓ Database connected: ${entries.length} library entries.`);
 });
 
 export const databaseCommand = (
@@ -184,7 +185,7 @@ export const databaseCommand = (
       try: () => {
         if (action === "setup" && !existsSync(".env")) {
           copyFileSync(".env.example", ".env", 1);
-          console.log("  📝 Created .env with local defaults.");
+          console.log("  ✓ Created .env with local defaults.");
         }
         loadEnvConfig(process.cwd(), true);
       },
@@ -236,14 +237,14 @@ export const databaseCommand = (
     if (target === "local" && action === "setup") yield* startPostgres;
     if (action === "setup" || action === "migrate") {
       yield* applyMigrations(migrationSecret);
-      console.log("  ✅ Database migrations applied.");
+      console.log("  ✓ Database migrations applied.");
     }
     if (action === "setup" && target === "local") {
       const seeded = yield* seedDemoLibrary;
       console.log(
         seeded
-          ? "  🌱 Demo library created."
-          : "  📚 Existing library preserved; seed skipped.",
+          ? "  ✓ Demo library created."
+          : "  ✓ Existing library preserved; seed skipped.",
       );
     }
     if (action !== "migrate") yield* checkLibrary;
