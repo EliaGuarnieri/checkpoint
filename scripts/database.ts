@@ -1,5 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { copyFileSync, existsSync } from "node:fs";
+import { promisify } from "node:util";
 
 import { loadEnvConfig } from "@next/env";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -30,17 +31,48 @@ class SetupError extends Data.TaggedError("SetupError")<{
   readonly message: string;
 }> {}
 
+const execFileAsync = promisify(execFile);
+
+const success = (message: string) => {
+  const tick =
+    process.stdout.isTTY && process.env.NO_COLOR === undefined
+      ? "\x1b[32m✓\x1b[0m"
+      : "✓";
+  console.log(`  ${tick} ${message}`);
+};
+
+const startSpinner = (message: string) => {
+  if (!process.stdout.isTTY) {
+    console.log(`  ${message}`);
+    return undefined;
+  }
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let frame = 0;
+  const render = () => {
+    process.stdout.write(`\r\x1b[2K  ${frames[frame]} ${message}`);
+    frame = (frame + 1) % frames.length;
+  };
+  render();
+  return setInterval(render, 80);
+};
+
 const command = (args: ReadonlyArray<string>, message: string) =>
-  Effect.try({
-    try: () => {
-      const result = spawnSync("docker", args, {
-        encoding: "utf8",
-        timeout: 120_000,
-      });
-      if (result.error || result.status !== 0) {
+  Effect.tryPromise({
+    try: async (signal) => {
+      try {
+        await execFileAsync("docker", args, {
+          encoding: "utf8",
+          timeout: 120_000,
+          signal,
+        });
+      } catch (cause) {
+        const stderr =
+          cause instanceof Error && "stderr" in cause
+            ? String(cause.stderr)
+            : "";
         const portOccupied =
           /address already in use|port is already allocated|ports are not available/i.test(
-            result.stderr ?? "",
+            stderr,
           );
         throw new SetupError({
           message: portOccupied
@@ -66,21 +98,33 @@ const startPostgres = Effect.gen(function* () {
     ["compose", "version"],
     "Docker Compose is unavailable. Install the Compose plugin, then run pnpm setup again.",
   );
-  console.log("  Starting local PostgreSQL on port 5433...");
-  yield* command(
-    [
-      "compose",
-      "-f",
-      "compose.yaml",
-      "up",
-      "--wait",
-      "--wait-timeout",
-      "45",
-      "postgres",
-    ],
-    "PostgreSQL could not start or become ready. Check Docker and docker compose logs postgres, then retry.",
+  yield* Effect.acquireUseRelease(
+    Effect.sync(() =>
+      startSpinner("Starting local PostgreSQL on port 5433..."),
+    ),
+    () =>
+      command(
+        [
+          "compose",
+          "-f",
+          "compose.yaml",
+          "up",
+          "--wait",
+          "--wait-timeout",
+          "45",
+          "postgres",
+        ],
+        "PostgreSQL could not start or become ready. Check Docker and docker compose logs postgres, then retry.",
+      ),
+    (timer) =>
+      Effect.sync(() => {
+        if (timer !== undefined) {
+          clearInterval(timer);
+          process.stdout.write("\r\x1b[2K");
+        }
+      }),
   );
-  console.log("  ✓ Local PostgreSQL is ready on port 5433.");
+  success("Local PostgreSQL is ready on port 5433.");
 });
 
 const projectRef = (url: URL) => {
@@ -167,7 +211,7 @@ const applyMigrations = (url: Redacted.Redacted<string>) =>
 const checkLibrary = Effect.gen(function* () {
   const repository = yield* LibraryRepository;
   const entries = yield* repository.list();
-  console.log(`  ✓ Database connected: ${entries.length} library entries.`);
+  success(`Database connected: ${entries.length} library entries.`);
 });
 
 export const databaseCommand = (
@@ -185,7 +229,7 @@ export const databaseCommand = (
       try: () => {
         if (action === "setup" && !existsSync(".env")) {
           copyFileSync(".env.example", ".env", 1);
-          console.log("  ✓ Created .env with local defaults.");
+          success("Created .env with local defaults.");
         }
         loadEnvConfig(process.cwd(), true);
       },
@@ -237,14 +281,14 @@ export const databaseCommand = (
     if (target === "local" && action === "setup") yield* startPostgres;
     if (action === "setup" || action === "migrate") {
       yield* applyMigrations(migrationSecret);
-      console.log("  ✓ Database migrations applied.");
+      success("Database migrations applied.");
     }
     if (action === "setup" && target === "local") {
       const seeded = yield* seedDemoLibrary;
-      console.log(
+      success(
         seeded
-          ? "  ✓ Demo library created."
-          : "  ✓ Existing library preserved; seed skipped.",
+          ? "Demo library created."
+          : "Existing library preserved; seed skipped.",
       );
     }
     if (action !== "migrate") yield* checkLibrary;
