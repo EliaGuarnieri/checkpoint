@@ -103,7 +103,7 @@ src/styles/globals.css è la fonte normativa delle variabili semantiche; il fron
 
 ## Typography
 
-**Display e corpo:** Geist (src/app/layout.tsx, src/styles/typeset.css). **Monospace:** Geist Mono, per scorciatoie e dati che lo richiedono. La stessa famiglia per testo e titoli mantiene l'archivio compatto e leggibile.
+**Display e corpo:** Geist (src/app/layout.tsx, src/styles/globals.css). **Monospace:** Geist Mono, per scorciatoie e dati che lo richiedono. La stessa famiglia per testo e titoli mantiene l'archivio compatto e leggibile.
 
 - **Display:** titoli di pagina e di gioco semibold (36px su mobile, 48px da sm, 60px da lg; line-height 1.25), con tracking stretto. Il titolo della libreria usa 32px su mobile per affiancare l'azione di aggiunta.
 - **Titolo di sezione:** semibold (24px, poi 30px da sm); i titoli delle card sono semibold (24px).

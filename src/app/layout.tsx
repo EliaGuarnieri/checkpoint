@@ -29,11 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="it"
       suppressHydrationWarning
-      className={cn(
-        "typeset typeset-docs h-full antialiased",
-        geist.variable,
-        geistMono.variable,
-      )}
+      className={cn("h-full antialiased", geist.variable, geistMono.variable)}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider
