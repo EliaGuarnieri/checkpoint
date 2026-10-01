@@ -1,7 +1,7 @@
 <div align="center">
   <img src="src/app/icon.svg" alt="" width="64" height="64">
   <h1>checkpoint</h1>
-  <p>Checkpoint è un diario personale per videogiochi.<br>Cerchi un gioco nel catalogo, lo aggiungi alla libreria e annoti stato, voto e nota.</p>
+  <p>Diario personale per videogiochi: organizza la tua libreria con stati, voti e note. <br>Un progetto in Next.js per imparare Effect.</p>
   <a href="https://checkpoint-green-one.vercel.app">
     <img src="https://img.shields.io/github/deployments/EliaGuarnieri/checkpoint/Production?label=Vercel&amp;logo=vercel&amp;logoColor=white" alt="Stato del deployment Vercel">
   </a>
