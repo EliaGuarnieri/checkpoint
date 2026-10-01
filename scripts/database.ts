@@ -56,6 +56,23 @@ const startSpinner = (message: string) => {
   return setInterval(render, 80);
 };
 
+const withStep = <A, E, R>(
+  message: string,
+  operation: Effect.Effect<A, E, R>,
+  completed: (value: A) => string,
+) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => startSpinner(message)),
+    () => operation,
+    (timer) =>
+      Effect.sync(() => {
+        if (timer !== undefined) {
+          clearInterval(timer);
+          process.stdout.write("\r\x1b[2K");
+        }
+      }),
+  ).pipe(Effect.tap((value) => Effect.sync(() => success(completed(value)))));
+
 const command = (args: ReadonlyArray<string>, message: string) =>
   Effect.tryPromise({
     try: async (signal) => {
@@ -85,47 +102,37 @@ const command = (args: ReadonlyArray<string>, message: string) =>
       cause instanceof SetupError ? cause : new SetupError({ message }),
   });
 
-const startPostgres = Effect.gen(function* () {
-  yield* command(
-    ["--version"],
-    "Docker is not installed. Install Docker with Compose, then run pnpm setup again.",
-  );
-  yield* command(
-    ["info"],
-    "Docker is unavailable. Start Docker, then run pnpm setup again.",
-  );
-  yield* command(
-    ["compose", "version"],
-    "Docker Compose is unavailable. Install the Compose plugin, then run pnpm setup again.",
-  );
-  yield* Effect.acquireUseRelease(
-    Effect.sync(() =>
-      startSpinner("Starting local PostgreSQL on port 5433..."),
-    ),
-    () =>
-      command(
-        [
-          "compose",
-          "-f",
-          "compose.yaml",
-          "up",
-          "--wait",
-          "--wait-timeout",
-          "45",
-          "postgres",
-        ],
-        "PostgreSQL could not start or become ready. Check Docker and docker compose logs postgres, then retry.",
-      ),
-    (timer) =>
-      Effect.sync(() => {
-        if (timer !== undefined) {
-          clearInterval(timer);
-          process.stdout.write("\r\x1b[2K");
-        }
-      }),
-  );
-  success("Local PostgreSQL is ready on port 5433.");
-});
+const startPostgres = withStep(
+  "Starting local PostgreSQL on port 5433...",
+  Effect.gen(function* () {
+    yield* command(
+      ["--version"],
+      "Docker is not installed. Install Docker with Compose, then run pnpm setup again.",
+    );
+    yield* command(
+      ["info"],
+      "Docker is unavailable. Start Docker, then run pnpm setup again.",
+    );
+    yield* command(
+      ["compose", "version"],
+      "Docker Compose is unavailable. Install the Compose plugin, then run pnpm setup again.",
+    );
+    yield* command(
+      [
+        "compose",
+        "-f",
+        "compose.yaml",
+        "up",
+        "--wait",
+        "--wait-timeout",
+        "45",
+        "postgres",
+      ],
+      "PostgreSQL could not start or become ready. Check Docker and docker compose logs postgres, then retry.",
+    );
+  }),
+  () => "Local PostgreSQL is ready on port 5433.",
+);
 
 const projectRef = (url: URL) => {
   if (url.hostname.endsWith(".pooler.supabase.com")) {
@@ -208,11 +215,14 @@ const applyMigrations = (url: Redacted.Redacted<string>) =>
       }),
   });
 
-const checkLibrary = Effect.gen(function* () {
-  const repository = yield* LibraryRepository;
-  const entries = yield* repository.list();
-  success(`Database connected: ${entries.length} library entries.`);
-});
+const checkLibrary = withStep(
+  "Checking database connection...",
+  Effect.gen(function* () {
+    const repository = yield* LibraryRepository;
+    return yield* repository.list();
+  }),
+  (entries) => `Database connected: ${entries.length} library entries.`,
+);
 
 export const databaseCommand = (
   action: string | undefined,
@@ -280,12 +290,14 @@ export const databaseCommand = (
     }
     if (target === "local" && action === "setup") yield* startPostgres;
     if (action === "setup" || action === "migrate") {
-      yield* applyMigrations(migrationSecret);
-      success("Database migrations applied.");
+      yield* withStep(
+        "Applying database migrations...",
+        applyMigrations(migrationSecret),
+        () => "Database migrations applied.",
+      );
     }
     if (action === "setup" && target === "local") {
-      const seeded = yield* seedDemoLibrary;
-      success(
+      yield* withStep("Preparing demo library...", seedDemoLibrary, (seeded) =>
         seeded
           ? "Demo library created."
           : "Existing library preserved; seed skipped.",
