@@ -12,7 +12,7 @@
   <a href="#avvio-rapido">Avvio rapido</a> ·
   <a href="#struttura-del-progetto">Struttura</a> ·
   <a href="#architettura">Architettura</a> ·
-  <a href="#uso-dellai-e-percorso-di-apprendimento">Percorso di apprendimento</a>
+  <a href="#uso-dellai-e-percorso-di-apprendimento">USO dell'AI e Percorso di apprendimento</a>
 </p>
 
 <table>
