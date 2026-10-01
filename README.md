@@ -45,6 +45,35 @@ pnpm check      # lint + typecheck + test
 pnpm build
 ```
 
+### Giochi ricercabili nel catalogo demo
+
+Con il database locale e `RAWG_API_KEY` assente o vuota, puoi cercare questi 20 giochi:
+
+- Baldur's Gate III
+- Celeste
+- Cyberpunk 2077
+- Dark Souls III
+- Dead Cells
+- Disco Elysium
+- Elden Ring
+- Hades
+- Hollow Knight
+- Outer Wilds
+- Portal
+- Portal 2
+- Red Dead Redemption 2
+- Sekiro: Shadows Die Twice
+- Slay the Spire
+- Stardew Valley
+- Terraria
+- The Elder Scrolls V: Skyrim
+- The Witcher 3: Wild Hunt
+- Undertale
+
+La ricerca trova anche parti del titolo e ignora maiuscole e minuscole. Per esempio, `portal` restituisce Portal e Portal 2, `souls` trova Dark Souls III e `witcher` trova The Witcher 3: Wild Hunt. I giochi hanno copertine dimostrative locali e possono essere aggiunti alla libreria o aggiornati senza chiamare RAWG.
+
+L'elenco è definito in [`src/modules/catalog/demo-data.ts`](src/modules/catalog/demo-data.ts). `GameCatalogDemo` fornisce il servizio `GameCatalog` tramite un `Layer` di Effect: ricerca e dettaglio usano lo stesso contratto dell'adapter RAWG, con dati locali deterministici.
+
 ## Struttura del progetto
 
 L'albero mostra le cartelle principali e alcuni file da cui iniziare la lettura.

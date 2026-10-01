@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="640" viewBox="0 0 480 640">
+  <title>Elden Ring, copertina dimostrativa</title>
+  <rect width="480" height="640" fill="#463c1e"/>
+  <circle cx="240" cy="240" r="120" fill="none" stroke="#e3cd87" stroke-width="2"/>
+  <path d="M120 240h240M240 120v240M155 155l170 170M155 325l170-170" stroke="#e3cd87" stroke-width="2" opacity=".4"/>
+  <text x="40" y="58" fill="#e3cd87" font-family="sans-serif" font-size="15" letter-spacing="3">CHECKPOINT / DEMO 09</text>
+  <text x="40" y="430" fill="#e3cd87" font-family="sans-serif" font-size="30" font-weight="700">ELDEN RING</text>
+  <text x="40" y="598" fill="#e3cd87" font-family="sans-serif" font-size="13" letter-spacing="2">CATALOGO LOCALE</text>
+</svg>
