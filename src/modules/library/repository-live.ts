@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { Effect, Layer } from "effect";
 
 import { DatabaseUrl } from "~/infrastructure/config";
@@ -12,6 +12,7 @@ import {
   libraryEntries,
 } from "~/infrastructure/database/schema";
 import type { CatalogGame } from "~/modules/catalog/model";
+import { demoCatalogGames } from "~/modules/catalog/demo-data";
 import type { LibraryFilters, LibraryGame } from "~/modules/library/model";
 import { filterLibraryGames } from "~/modules/library/query";
 import {
@@ -278,3 +279,53 @@ export const LibraryRepositoryLive = Layer.succeed(LibraryRepository, {
       ),
     ),
 });
+
+// One SQL transaction prevents a failed or concurrent setup from leaving a partial seed.
+export const seedDemoLibrary = databaseEffect("addManualGame", (db) =>
+  db.transaction(async (transaction) => {
+    await transaction.execute(
+      sql`LOCK TABLE library_entries IN SHARE ROW EXCLUSIVE MODE`,
+    );
+    const existing = await transaction.select().from(libraryEntries).limit(1);
+    if (existing.length > 0) return false;
+
+    const demoEntries = [
+      {
+        catalogId: "274755",
+        status: "completed",
+        rating: 9,
+        note: "Una run dopo l'altra, c'è sempre qualcosa da scoprire.",
+      },
+      { catalogId: "22121", status: "backlog", rating: null, note: null },
+      {
+        catalogId: "3328",
+        status: "playing",
+        rating: 8,
+        note: "Riprendere la questline delle Skellige.",
+      },
+      {
+        catalogId: "9767",
+        status: "abandoned",
+        rating: 7,
+        note: "Riprenderlo quando avrò voglia di una nuova sfida.",
+      },
+    ] satisfies ReadonlyArray<
+      { catalogId: string } & Required<
+        import("~/modules/library/model").LibraryEntryUpdate
+      >
+    >;
+
+    for (const entry of demoEntries) {
+      const game = demoCatalogGames.find(({ id }) => id === entry.catalogId);
+      if (!game) throw new Error("Demo library entry has no catalog game");
+      const gameId = await upsertCatalogGame(transaction, game);
+      await transaction.insert(libraryEntries).values({
+        gameId,
+        status: entry.status,
+        rating: entry.rating,
+        note: entry.note,
+      });
+    }
+    return true;
+  }),
+);

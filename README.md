@@ -23,18 +23,19 @@ Ho mantenuto il dominio contenuto per dedicare attenzione a Effect e alla separa
 
 ## Avvio rapido
 
-Servono Node.js 22, pnpm e un progetto Supabase.
+Servono Node.js 22, pnpm e Docker avviato con Docker Compose.
 
 ```bash
 pnpm install --frozen-lockfile
-cp .env.example .env
-# Compila .env con le connessioni Supabase e RAWG_API_KEY.
-pnpm db:migrate
 pnpm setup
 pnpm dev
 ```
 
-Configura le connessioni come descritto sotto, poi apri [http://localhost:3000](http://localhost:3000). `pnpm setup` verifica la connessione a Supabase con una lettura della libreria. Le migration si applicano esplicitamente con `pnpm db:migrate`; il setup non inserisce dati dimostrativi.
+Apri [http://localhost:3000](http://localhost:3000). `pnpm setup` crea `.env` con i valori locali se manca, avvia PostgreSQL su `localhost:5433`, applica le migration e inserisce quattro voci dimostrative se la libreria è vuota. Senza chiave RAWG, il catalogo demo permette di cercare, aggiungere giochi e aggiornare i metadati senza servizi esterni; le copertine dimostrative sono incluse nel repository.
+
+Puoi rilanciare `pnpm setup`: conserva il tuo `.env` e, se la libreria contiene già voci, non reinserisce i giochi eliminati e non modifica stato, voto o nota. Se svuoti completamente la libreria, il setup inserisce nuovamente i dati demo. Il database rimane attivo e conserva i dati in un volume Docker. Per fermarlo usa `docker compose stop postgres`.
+
+Per usare RAWG anche in locale, aggiungi `RAWG_API_KEY` a `.env`. Per usare Supabase, configura le connessioni come descritto sotto: il setup applica le migration e verifica la connessione, senza inserire dati demo. Gli URL PostgreSQL diversi dal container del progetto e da Supabase vengono rifiutati. Se hai già un `.env` Supabase, il setup continua a usare quello; per passare al database locale imposta `DATABASE_URL` come in `.env.example` e svuota `DATABASE_MIGRATION_URL`.
 
 ```bash
 pnpm test
@@ -64,7 +65,8 @@ checkpoint/
 │   ├── lib/                       Client API e utilità di navigazione
 │   └── styles/                    Stili globali e tipografia
 ├── drizzle/                       Migration SQL e metadati Drizzle
-├── scripts/                       Setup e comandi per il database Supabase
+├── scripts/                       Setup e comandi per PostgreSQL locale e Supabase
+├── compose.yaml                   PostgreSQL locale con volume persistente
 ├── certs/                         Certificato CA per la connessione Supabase
 ├── docs/
 │   ├── spec.md                    Specifica dei flussi applicativi
@@ -161,11 +163,11 @@ Approfondirei anche la [configurazione in Effect](https://effect.website/docs/v4
 
 ## Configurazione dei servizi esterni
 
-L'app usa Supabase per la persistenza e RAWG per il catalogo. I test didattici usano adapter forniti esplicitamente e non richiedono credenziali.
+L'app usa PostgreSQL locale o Supabase per la persistenza. Il database locale può usare il catalogo demo o RAWG; con Supabase la chiave RAWG è obbligatoria. I test didattici usano adapter forniti esplicitamente e non richiedono credenziali.
 
 ### Database Supabase
 
-L'app usa Supabase anche durante lo sviluppo locale. Drizzle accede al database attraverso il `LibraryRepository` di Effect. Per configurare le connessioni:
+Puoi usare Supabase anche durante lo sviluppo, in alternativa al container locale. Drizzle accede al database attraverso il `LibraryRepository` di Effect. Per configurare le connessioni:
 
 1. Nel progetto Supabase, apri **Connect** e copia l'URI del **Transaction pooler** (porta `6543`). Sostituisci il segnaposto della password e codifica i caratteri speciali della password nell'URI.
 2. Imposta l'URI come `DATABASE_URL` tra le variabili **server** dell'hosting. Non usare il prefisso `NEXT_PUBLIC_`: la connessione al database avviene solo nei Route Handler.
@@ -174,28 +176,28 @@ L'app usa Supabase anche durante lo sviluppo locale. Drizzle accede al database 
 
 Il client limita a una connessione per istanza quando l'host è Supabase. Verifica la CA e il nome host usando il certificato pubblico `certs/supabase-ca.crt`, scaricato da **Database → Settings → Download certificate**; aggiorna questo file se Supabase ruota la CA. Il driver `pg` permette di usare il pooler transaction senza il pipelining di Postgres.js. La migration `0002_enable_rls` abilita RLS senza policy sulle sei tabelle dell'app: i ruoli `anon` e `authenticated` non possono leggere o modificare le voci personali, mentre la connessione PostgreSQL del server continua a funzionare. [Connessioni Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Sicurezza della Data API](https://supabase.com/docs/guides/api/securing-your-api).
 
-Il progetto non richiede PostgreSQL locale o Docker. App e comandi database usano Supabase; gli script verificano che le URI puntino a Supabase e che le due connessioni di migrazione appartengano allo stesso progetto. Il test didattico usa il repository in memoria e parte con `pnpm test`, senza database o servizi esterni.
+Con Supabase non serve Docker. Gli script verificano che le due connessioni appartengano allo stesso progetto. `pnpm db:migrate` e `pnpm db:check` funzionano anche con il database locale; i comandi con suffisso `:supabase` accettano soltanto Supabase. Il test didattico usa il repository in memoria e parte con `pnpm test`, senza database o servizi esterni.
 
 Le variabili dell'app sono descritte in `src/infrastructure/config.ts` con `Config` di Effect:
 
-| Variabile                | Regola                                                                                                                                                           |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Obbligatoria alla prima operazione del repository live; punta al Transaction pooler Supabase sia nello sviluppo sia nell'app ospitata.                           |
-| `DATABASE_MIGRATION_URL` | Usata da Drizzle Kit per le migration; se manca, usa `DATABASE_URL`. Lo script Supabase la richiede esplicitamente per evitare migration sul Transaction pooler. |
-| `RAWG_API_KEY`           | Obbligatoria e non vuota nell'app: il catalogo live usa sempre RAWG.                                                                                             |
+| Variabile                | Regola                                                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Database del progetto su `localhost:5433/checkpoint` o `127.0.0.1:5433/checkpoint`, oppure Transaction pooler Supabase sulla porta `6543`.                                    |
+| `DATABASE_MIGRATION_URL` | In locale, se manca o è vuota, usa `DATABASE_URL`. Su Supabase è obbligatoria e deve usare la connessione diretta o Session pooler dello stesso progetto.                     |
+| `RAWG_API_KEY`           | In locale è facoltativa: assente o vuota seleziona il catalogo demo. Su Supabase è obbligatoria. Una chiave presente seleziona RAWG senza fallback al demo in caso di errore. |
 
-Le URL e la chiave RAWG sono valori `Redacted`: si leggono esplicitamente soltanto quando servono alla connessione o alla richiesta esterna. Next.js carica `.env` nello sviluppo locale; sull'hosting le variabili vanno configurate lato server. Il repository in memoria e il catalogo fake vengono forniti esplicitamente solo nei test.
+Le URL e la chiave RAWG sono valori `Redacted`. Next.js e gli script caricano la configurazione con le stesse regole di precedenza, incluse le variabili già presenti nel processo e i file `.env.local`. Sull'hosting le variabili vanno configurate lato server. Il repository in memoria è usato nei test; l'app locale usa il repository PostgreSQL anche con il catalogo demo.
 
 Poiché l'app usa soltanto Drizzle, puoi disattivare la **Data API** nelle impostazioni API di Supabase. Il prototipo non ha autenticazione: se pubblichi l'app senza limitare l'accesso, chiunque raggiunga i suoi endpoint può modificare l'unica libreria personale. [Drizzle e Data API](https://supabase.com/docs/guides/database/drizzle).
 
 ### Catalogo RAWG
 
-Per cercare nel catalogo, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e impostala in `.env`:
+Per cercare nel catalogo live, crea una API key dalla [documentazione RAWG](https://rawg.io/apidocs) e impostala in `.env`:
 
 ```env
 RAWG_API_KEY=la-tua-chiave
 ```
 
-Non committare `.env`. Senza chiave, le richieste API restituiscono un errore di configurazione. Il catalogo fake è disponibile come `Layer` nei test. L'interfaccia mostra l'attribuzione RAWG.
+Non committare `.env`. Senza chiave, il database locale usa il catalogo demo; con Supabase le richieste API restituiscono un errore di configurazione. L'interfaccia mostra l'attribuzione RAWG.
 
 La ricerca usa una sola richiesta alla lista RAWG e restituisce fino a sei anteprime con titolo, copertina, data e generi. Quando scegli **Aggiungi**, il client invia l'ID: il server carica il dettaglio RAWG, inclusi sviluppatori ed editori, e salva lo snapshot nella libreria. Cercare non scrive nel database.

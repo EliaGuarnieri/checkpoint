@@ -1,4 +1,4 @@
-import { Config, ConfigError } from "effect";
+import { Config } from "effect";
 
 const requiredSecret = (name: string) =>
   Config.redacted(
@@ -13,10 +13,7 @@ const requiredSecret = (name: string) =>
 export const DatabaseUrl = requiredSecret("DATABASE_URL");
 export const DatabaseMigrationUrl = requiredSecret("DATABASE_MIGRATION_URL");
 export const MigrationUrl = DatabaseMigrationUrl.pipe(
-  Config.orElseIf({
-    if: ConfigError.isMissingDataOnly,
-    orElse: () => DatabaseUrl,
-  }),
+  Config.orElse(() => DatabaseUrl),
 );
 
 export const RawgApiKey = requiredSecret("RAWG_API_KEY");

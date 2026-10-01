@@ -7,8 +7,9 @@ import { useState } from "react";
 import { fetchJson } from "~/lib/api";
 import { CatalogGameSchema } from "~/modules/catalog/model";
 
-function rawgImage(url: string | null): string | null {
+function coverImage(url: string | null): string | null {
   if (!url) return null;
+  if (/^\/demo-covers\/[a-z0-9-]+\.svg$/.test(url)) return url;
   try {
     const parsed = new URL(url);
     return parsed.protocol === "https:" && parsed.hostname === "media.rawg.io"
@@ -33,7 +34,7 @@ export function GameCover({
   readonly priority?: boolean;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const missingCover = !rawgImage(coverUrl);
+  const missingCover = !coverImage(coverUrl);
   const catalogGame = useQuery({
     queryKey: ["catalog-game", rawgId],
     queryFn: () => fetchJson(CatalogGameSchema, `/api/catalog/games/${rawgId}`),
@@ -42,7 +43,7 @@ export function GameCover({
     retry: false,
   });
   const imageUrl =
-    rawgImage(coverUrl) ?? rawgImage(catalogGame.data?.coverUrl ?? null);
+    coverImage(coverUrl) ?? coverImage(catalogGame.data?.coverUrl ?? null);
 
   return (
     <div className="relative size-full overflow-hidden bg-muted">

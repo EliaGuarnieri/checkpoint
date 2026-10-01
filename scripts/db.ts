@@ -1,3 +1,3 @@
 import { runDatabaseCli } from "./database";
 
-runDatabaseCli(true);
+runDatabaseCli();

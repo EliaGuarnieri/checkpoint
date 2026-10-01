@@ -1,0 +1,55 @@
+import type { CatalogGame } from "~/modules/catalog/model";
+
+// IDs match RAWG so local entries can also be refreshed with the live catalog.
+export const demoCatalogGames: ReadonlyArray<CatalogGame> = [
+  {
+    id: "274755",
+    title: "Hades",
+    slug: "hades-2018",
+    coverUrl: "/demo-covers/hades.svg",
+    releaseDate: "2020-09-17",
+    genres: ["Action", "Roguelike"],
+    developers: ["Supergiant Games"],
+    publishers: ["Supergiant Games"],
+  },
+  {
+    id: "22121",
+    title: "Celeste",
+    slug: "celeste",
+    coverUrl: "/demo-covers/celeste.svg",
+    releaseDate: "2018-01-25",
+    genres: ["Platformer"],
+    developers: ["Maddy Makes Games"],
+    publishers: ["Maddy Makes Games"],
+  },
+  {
+    id: "3328",
+    title: "The Witcher 3: Wild Hunt",
+    slug: "the-witcher-3-wild-hunt",
+    coverUrl: "/demo-covers/the-witcher-3-wild-hunt.svg",
+    releaseDate: "2015-05-18",
+    genres: ["RPG"],
+    developers: ["CD Projekt RED"],
+    publishers: ["CD Projekt"],
+  },
+  {
+    id: "9767",
+    title: "Hollow Knight",
+    slug: "hollow-knight",
+    coverUrl: "/demo-covers/hollow-knight.svg",
+    releaseDate: "2017-02-24",
+    genres: ["Action", "Platformer"],
+    developers: ["Team Cherry"],
+    publishers: ["Team Cherry"],
+  },
+  {
+    id: "28",
+    title: "Red Dead Redemption 2",
+    slug: "red-dead-redemption-2",
+    coverUrl: "/demo-covers/red-dead-redemption-2.svg",
+    releaseDate: "2018-10-26",
+    genres: ["Action", "Adventure"],
+    developers: ["Rockstar Games"],
+    publishers: ["Rockstar Games"],
+  },
+];

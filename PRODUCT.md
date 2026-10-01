@@ -29,7 +29,7 @@ The player searches the RAWG catalog, manually adds a game to the library, brows
 - A rating is an optional whole number from 1 to 10. A note is one optional piece of personal text. Both are independent of tracking status.
 - The library supports filters for title, status, genre, developer, publisher, and minimum rating, plus sorting by latest update, title, rating, or release date.
 - The product is single-user and has no authentication, social features, playtime tracking, background jobs, or automatic synchronization.
-- The live catalog requires a RAWG API key and displays RAWG attribution. Tests use a deterministic fake catalog without credentials or network access.
+- Local development uses the project-managed Docker PostgreSQL database and a deterministic demo catalog when the RAWG key is absent or blank. Demo covers are included in the repository. A configured key selects the live catalog; Supabase requires a RAWG key. Live failures do not switch to the demo catalog. Tests can use a deterministic fake catalog without credentials or network access.
 - The web app uses Next.js, React, TypeScript, Effect v3, TanStack Query, Drizzle ORM, and PostgreSQL. Effect owns server configuration, dependencies, validation, typed errors, external requests, retry, concurrency, and repository interfaces. TanStack Query owns browser queries, mutations, and cache invalidation.
 - Domain terms are defined in [CONTEXT.md](CONTEXT.md): game, library entry, tracking status, rating, note, and catalog.
 
